@@ -1,0 +1,17 @@
+{
+  "diagnostics": {
+    "disable": [
+      "unnecessary-if"
+    ],
+    "enables": [
+      "incomplete-signature-doc",
+      "missing-global-doc"
+    ]
+  },
+  "strict": {
+    "requirePath": true,
+    "arrayIndex": false,
+    "metaOverrideFileDefine": true,
+    "docBaseConstMatchBaseType": true
+  }
+}
