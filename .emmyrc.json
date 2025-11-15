@@ -10,8 +10,18 @@
   },
   "strict": {
     "requirePath": true,
-    "arrayIndex": false,
+    "arrayIndex": true,
     "metaOverrideFileDefine": true,
     "docBaseConstMatchBaseType": true
+  },
+  "workspace": {
+    "enableReindex": true,
+    "reindexDuration": 5000
+  },
+  "references": {
+    "fuzzySearch": false
+  },
+  "codeLens": {
+    "enable": false
   }
 }

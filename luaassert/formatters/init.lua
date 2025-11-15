@@ -6,7 +6,7 @@ local isatty, colors
 do
   local ok, term = pcall(require, 'term')
   ---@cast term table
-  isatty = io.type(io.stdout) == 'file' and ok and  term.isatty(io.stdout)
+  isatty = io.type(io.stdout) == 'file' and ok and term.isatty(io.stdout)
   if not isatty then
     local isWindows = package.config:sub(1, 1) == '\\'
     if isWindows and os.getenv("ANSICON") then
