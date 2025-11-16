@@ -1,14 +1,8 @@
 local colored = require("luaassert.formatters.colored")
 local stringFormat = string.format
-local deepCompare = require("luaassert.util").deepCompare
 local diff = require("luaassert.utils.diff").diff
-local formatValue = require("luaassert.utils.diff").formatValue
-local tostring = tostring
+local format = require("luaassert.utils.prettyFormat").format
 local type = type
-local tableInsert = table.insert
-local tableSort = table.sort
-local pairs = pairs
-local ipairs = ipairs
 local tableConcat = table.concat
 ---@namespace Luaassert
 
@@ -30,7 +24,7 @@ export.DIM_COLOR = DIM_COLOR
 
 ---@class MatcherHintOptions
 ---@field comment string? 注释
----@field isNegate boolean? 是否取反
+---@field isNot boolean? 是否取反
 ---@field secondArgument string? 第二个参数
 ---@field expectedColor? fun(arg: string): string 预期值颜色
 ---@field receivedColor? fun(arg: string): string? 实际值颜色
@@ -46,7 +40,7 @@ function export.matcherHint(matcherName, received, expected, options)
   received = received or 'received'
   expected = expected or 'expected'
   local comment = options and options.comment or ''
-  local isNegated = options and options.isNegate or false
+  local isNot = options and options.isNot or false
   local secondArgument = options and options.secondArgument or ''
   local expectedColor = options and options.expectedColor or EXPECTED_COLOR
   local receivedColor = options and options.receivedColor or RECEIVED_COLOR
@@ -63,8 +57,8 @@ function export.matcherHint(matcherName, received, expected, options)
     hint = hint .. DIM_COLOR(stringFormat('%s(', dimString)) .. receivedColor(received);
     dimString = ')';
   end
-  if isNegated then
-    hint = hint .. DIM_COLOR(stringFormat('%s.', dimString)) .. 'not'
+  if isNot then
+    hint = hint .. DIM_COLOR(stringFormat('%s.', dimString)) .. 'not_'
     dimString = ''
   end
   -- 匹配器名称
@@ -104,11 +98,10 @@ end
 ---@param maxWidth number? 最大宽度
 ---@return string @字符串化后的对象
 local function stringify(object, maxDepth, maxWidth)
-  maxDepth = maxDepth or 10
-  maxWidth = maxWidth or 10
-
-  local seen = {}
-  return formatValue(object, maxDepth, maxDepth, maxWidth, seen)
+  return format(object, {
+    maxDepth = 10,
+    maxWidth = 10,
+  })
 end
 
 -- 将值压缩成单行文本，表使用紧凑花括号，并携带深度/宽度/长度限制以避免爆长
@@ -117,13 +110,10 @@ end
 ---@param maxWidth? integer
 ---@return string
 local function stringifyInline(value, maxDepth, maxWidth)
-  maxDepth = maxDepth or 5
-  maxWidth = maxWidth or 8
-  local str = stringify(value, maxDepth, maxWidth)
-  str = str:gsub("%s*\n%s*", " ")
-  str = str:gsub("%s%s+", " ")
-  str = str:gsub("%s*([,%{%}%[%]])%s*", "%1")
-  return str
+  return format(value, {
+    maxDepth = maxDepth or 10,
+    maxWidth = maxWidth or 10,
+  })
 end
 
 export.printReceived = function(object)

@@ -17,7 +17,7 @@ local matchers = {
         ---@type MatcherHintOptions
         local options = {
             comment = "a == b",
-            isNegate = self.isNegate,
+            isNot = self.isNot,
         }
 
         local pass = self.actual == expected
@@ -53,13 +53,13 @@ local matchers = {
         ---@type MatcherHintOptions
         local options = {
             comment = i18n("深度比较"),
-            isNegate = self.isNegate,
+            isNot = self.isNot,
         }
         local pass = deepCompare(self.actual, expected)
         local message = pass and function()
             return matcherHint(matcherName, nil, nil, options) ..
                 "\n\n" ..
-                "Expected: not" .. printExpected(expected)
+                "Expected: not " .. printExpected(expected)
         end or function()
             return matcherHint(matcherName, nil, nil, options)
                 .. "\n\n" ..

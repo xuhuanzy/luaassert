@@ -11,7 +11,7 @@ local deepCopy = require("luaassert.util").deepCopy
 ---@param context MatcherContext
 ---@param result ExpectationResult
 local function processResult(context, result)
-    if (result.passed and context.isNegate) or (not result.passed and not context.isNegate) then
+    if (result.passed and context.isNot) or (not result.passed and not context.isNot) then
         local message = result.message and result.message() or matcherUtils.RECEIVED_COLOR(i18n("没有为此匹配器指定消息。"))
         error(message, util.errorLevel())
     end
@@ -27,8 +27,8 @@ local Assertion = {}
 ---@param key string
 ---@return function|nil
 Assertion.__index = function(self, key)
-    if key == "negate" and self.context.isNegate == false then
-        self.context.isNegate = true
+    if key == "not_" and self.context.isNot == false then
+        self.context.isNot = true
         ---@diagnostic disable-next-line: return-type-mismatch
         return self
     end
@@ -52,7 +52,7 @@ end
 
 --- 重置部分状态以复用断言对象
 function Assertion:resetState()
-    self.context.isNegate = false
+    self.context.isNot = false
 end
 
 ---@param actual any
@@ -62,7 +62,7 @@ function Assertion.new(actual)
         ---@type MatcherContext
         context = {
             actual = actual,
-            isNegate = false,
+            isNot = false,
         },
     }, Assertion)
 end

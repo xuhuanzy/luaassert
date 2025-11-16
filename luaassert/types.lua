@@ -3,7 +3,7 @@
 ---@alias PartialFunction<T> { [P in keyof T]: T[P] extends function and T[P]? or T[P]; }
 
 ---@class Inverse<T>
----@field negate T 取反断言
+---@field not_ T 取反断言
 
 ---@alias Tester fun(self: TesterContext, a: any, b: any, customTesters: Tester[]): boolean?
 
@@ -19,7 +19,7 @@
 
 ---@class MatcherContext
 ---@field actual any 收到的实际值
----@field isNegate boolean 是否取反
+---@field isNot boolean 是否取反
 
 ---@class ExpectationResult
 ---@field passed boolean 是否通过断言
