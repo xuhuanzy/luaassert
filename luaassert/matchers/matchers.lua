@@ -55,7 +55,7 @@ local matchers = {
             comment = i18n("深度比较"),
             isNot = self.isNot,
         }
-        local pass = deepCompare(self.actual, expected)
+        local pass = deepCompare(self.actual, expected, true)
         local message = pass and function()
             return matcherHint(matcherName, nil, nil, options) ..
                 "\n\n" ..

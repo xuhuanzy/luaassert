@@ -42,10 +42,10 @@
 
 --- 匹配器接口
 ---@class (partial) Matchers<T>
----@field toBe fun(self: self, expected: any) 断言实际值与预期值相等
----@field toBeType fun(self: self, expectedType: "nil" | "number" | "string" | "boolean" | "table" | "function" | "thread" | "userdata") 断言实际值类型与预期类型相等
----@field toBeInteger fun(self: self) 断言实际值是否为整数
----@field toEqual fun(self: self, expected: any) 断言实际值与预期值深度相等
+---@field toBe fun(self: self, expected: any) 浅比较实际值与预期值是否相等, 如需深度比较, 请使用 {@link Luaassert.Matchers.toEqual}.
+---@field toBeType fun(self: self, expectedType: "nil"|"number"|"string"|"boolean"|"table"|"function"|"thread"|"userdata") 实际值类型与预期类型相等
+---@field toBeInteger fun(self: self) 实际值是否为整数
+---@field toEqual fun(self: self, expected: any) 比较实际值与预期值是否相等, 如果是表, 则进行深度比较.
 
 
 

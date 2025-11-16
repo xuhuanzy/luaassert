@@ -8,6 +8,7 @@ local tableSort = table.sort
 local pairs = pairs
 local ipairs = ipairs
 local tableConcat = table.concat
+local stringRep = string.rep
 
 local EXPECTED_COLOR = colored.green
 local RECEIVED_COLOR = colored.red
@@ -31,70 +32,53 @@ local function renderLine(marker, indent, text)
     local colorize = marker == "+" and RECEIVED_COLOR
         or marker == "-" and EXPECTED_COLOR
         or DIM_COLOR
-    return colorize(prefix .. string.rep("  ", indent) .. text)
+    return colorize(prefix .. stringRep("  ", indent) .. text)
 end
-
 
 local function formatKey(key)
     local ty = type(key)
     if ty == "string" then
-        return stringFormat("%q", key)
+        if key:match("^[%a_][%w_]*$") then
+            return key
+        end
+        return stringFormat("[%q]", key)
     elseif ty == "number" then
         return stringFormat("[%s]", tostring(key))
     end
     return stringFormat("[%s]", tostring(key))
 end
 
--- 共享的递归格式化函数，传入外层的深度/宽度限制与循环表缓存，避免重复创建闭包
-local function formatValue(value, depth, maxDepth, maxWidth, seen)
+local function formatPrimitive(value)
     local ty = type(value)
     if ty == "string" then
         return stringFormat("%q", value)
     elseif ty == "number" or ty == "boolean" or ty == "nil" then
         return tostring(value)
-    elseif ty ~= "table" then
-        return stringFormat("<%s>", ty)
     end
+    return stringFormat("<%s>", ty)
+end
 
-    if seen[value] then
-        return "[Circular]"
-    end
-    if depth <= 0 then
-        return "{...}"
-    end
+local function compareKeys(a, b)
+    return tostring(a) < tostring(b)
+end
 
-    seen[value] = true
-    local parts = {}
-    local indent = string.rep("  ", (maxDepth - depth))
-    local nextIndent = indent .. "  "
-
-    parts[#parts + 1] = "{"
+local function sortedKeys(obj)
     local keys = {}
-    for k, _ in pairs(value) do
+    for k, _ in pairs(obj) do
         tableInsert(keys, k)
     end
-    tableSort(keys, function(a, b)
-        return tostring(a) < tostring(b)
-    end)
-
-    local limit = math.min(#keys, maxWidth)
-    for i = 1, limit do
-        local k = keys[i]
-        parts[#parts + 1] = "\n" .. nextIndent ..
-            stringFormat("%s: %s", formatKey(k), formatValue(value[k], depth - 1, maxDepth, maxWidth, seen))
-        if i < limit then
-            parts[#parts] = parts[#parts] .. ","
-        end
-    end
-    if #keys > maxWidth then
-        parts[#parts + 1] = "\n" .. nextIndent .. "..."
-    end
-    parts[#parts + 1] = "\n" .. indent .. "}"
-
-    seen[value] = nil
-    return tableConcat(parts)
+    tableSort(keys, compareKeys)
+    return keys
 end
-export.formatValue = formatValue
+
+local function applyMarker(marker, minusCount, plusCount)
+    if marker == "-" then
+        minusCount = minusCount + 1
+    elseif marker == "+" then
+        plusCount = plusCount + 1
+    end
+    return minusCount, plusCount
+end
 
 ---@param entries table[] 差异行表
 ---@param marker string|nil 差异标记
@@ -103,16 +87,20 @@ export.formatValue = formatValue
 ---@param value any 值
 ---@param includeComma boolean? 是否包含逗号
 ---@param visited table<any, boolean>? 已访问表
+---@return integer minusCount, integer plusCount
 local function appendValueLines(entries, marker, indent, prefix, value, includeComma, visited)
     local suffix = includeComma and "," or ""
+    local minusCount = 0
+    local plusCount = 0
     local valueType = type(value)
     if valueType ~= "table" then
         tableInsert(entries, {
             marker = marker,
             indent = indent,
-            text = prefix .. formatValue(value, 3, 5) .. suffix,
+            text = prefix .. formatPrimitive(value) .. suffix,
         })
-        return
+        minusCount, plusCount = applyMarker(marker, minusCount, plusCount)
+        return minusCount, plusCount
     end
 
     -- 展开表为逐行结构，标记每个字段的 +/-，保证行数统计准确，同时处理循环引用
@@ -123,52 +111,50 @@ local function appendValueLines(entries, marker, indent, prefix, value, includeC
             indent = indent,
             text = prefix .. "[Circular]" .. suffix,
         })
-        return
+        minusCount, plusCount = applyMarker(marker, minusCount, plusCount)
+        return minusCount, plusCount
     end
 
     visited[value] = true
     tableInsert(entries, { marker = marker, indent = indent, text = prefix .. "{" })
-    local keys = {}
-    for k, _ in pairs(value) do
-        tableInsert(keys, k)
-    end
-    tableSort(keys, function(a, b)
-        return tostring(a) < tostring(b)
-    end)
+    minusCount, plusCount = applyMarker(marker, minusCount, plusCount)
+    local keys = sortedKeys(value)
     for _, key in ipairs(keys) do
-        appendValueLines(entries, marker, indent + 1, formatKey(key) .. ": ", value[key], true, visited)
+        local childMinus, childPlus = appendValueLines(
+            entries,
+            marker,
+            indent + 1,
+            formatKey(key) .. ": ",
+            value[key],
+            true,
+            visited
+        )
+        minusCount = minusCount + childMinus
+        plusCount = plusCount + childPlus
     end
     tableInsert(entries, { marker = marker, indent = indent, text = "}" .. suffix })
+    minusCount, plusCount = applyMarker(marker, minusCount, plusCount)
     visited[value] = nil
-end
-
-
----@param entries table[]
----@return integer, integer
-local function countMarkers(entries)
-    local minus, plus = 0, 0
-    for _, entry in ipairs(entries) do
-        if entry.marker == "-" then
-            minus = minus + 1
-        elseif entry.marker == "+" then
-            plus = plus + 1
-        end
-    end
-    return minus, plus
+    return minusCount, plusCount
 end
 
 --- 构建对象差异
 ---@param expected any
 ---@param received any
 ---@param depth integer
----@return table[]
+---@return table[], integer, integer
 local function buildDiff(expected, received, depth)
     depth = depth or 0
     local entries = {}
+    local minusCount, plusCount = 0, 0
     if type(expected) ~= "table" or type(received) ~= "table" then
-        appendValueLines(entries, "-", depth, "", expected, false)
-        appendValueLines(entries, "+", depth, "", received, false)
-        return entries
+        local minus, plus = appendValueLines(entries, "-", depth, "", expected, false)
+        minusCount = minusCount + minus
+        plusCount = plusCount + plus
+        minus, plus = appendValueLines(entries, "+", depth, "", received, false)
+        minusCount = minusCount + minus
+        plusCount = plusCount + plus
+        return entries, minusCount, plusCount
     end
 
     tableInsert(entries, { marker = nil, indent = depth, text = "{" })
@@ -184,24 +170,28 @@ local function buildDiff(expected, received, depth)
             keys[#keys + 1] = k
         end
     end
-    tableSort(keys, function(a, b)
-        return tostring(a) < tostring(b)
-    end)
+    tableSort(keys, compareKeys)
 
     for _, key in ipairs(keys) do
         local expVal = expected[key]
         local recVal = received[key]
-        local linePrefix = formatKey(key) .. ": "
+        local linePrefix = formatKey(key) .. " = "
         if expVal == nil then
-            appendValueLines(entries, "+", depth + 1, linePrefix, recVal, true)
+            local minus, plus = appendValueLines(entries, "+", depth + 1, linePrefix, recVal, true)
+            minusCount = minusCount + minus
+            plusCount = plusCount + plus
         elseif recVal == nil then
-            appendValueLines(entries, "-", depth + 1, linePrefix, expVal, true)
+            local minus, plus = appendValueLines(entries, "-", depth + 1, linePrefix, expVal, true)
+            minusCount = minusCount + minus
+            plusCount = plusCount + plus
+        elseif expVal == recVal then
+            appendValueLines(entries, nil, depth + 1, linePrefix, expVal, true)
         else
-            local same = deepCompare(expVal, recVal)
+            local same = deepCompare(expVal, recVal, true)
             if same then
                 appendValueLines(entries, nil, depth + 1, linePrefix, expVal, true)
             elseif type(expVal) == "table" and type(recVal) == "table" then
-                local childEntries = buildDiff(expVal, recVal, depth + 1)
+                local childEntries, childMinus, childPlus = buildDiff(expVal, recVal, depth + 1)
                 if #childEntries > 0 then
                     childEntries[1].text = linePrefix .. childEntries[1].text
                     ---@diagnostic disable-next-line: need-check-nil
@@ -209,16 +199,22 @@ local function buildDiff(expected, received, depth)
                     for _, entry in ipairs(childEntries) do
                         tableInsert(entries, entry)
                     end
+                    minusCount = minusCount + childMinus
+                    plusCount = plusCount + childPlus
                 end
             else
-                appendValueLines(entries, "-", depth + 1, linePrefix, expVal, true)
-                appendValueLines(entries, "+", depth + 1, linePrefix, recVal, true)
+                local minus, plus = appendValueLines(entries, "-", depth + 1, linePrefix, expVal, true)
+                minusCount = minusCount + minus
+                plusCount = plusCount + plus
+                minus, plus = appendValueLines(entries, "+", depth + 1, linePrefix, recVal, true)
+                minusCount = minusCount + minus
+                plusCount = plusCount + plus
             end
         end
     end
 
     tableInsert(entries, { marker = nil, indent = depth, text = "}" })
-    return entries
+    return entries, minusCount, plusCount
 end
 
 --- 生成一个字符串用于突出两个值之间的差异.
@@ -227,8 +223,7 @@ end
 ---@param options DiffOptions? 差异选项
 ---@return string
 function export.diff(a, b, options)
-    local diffEntries = buildDiff(a, b, 0)
-    local minusCount, plusCount = countMarkers(diffEntries)
+    local diffEntries, minusCount, plusCount = buildDiff(a, b, 0)
     local lines = {
         EXPECTED_COLOR(stringFormat("- Expected  - %d", minusCount)),
         RECEIVED_COLOR(stringFormat("+ Received  + %d", plusCount)),
