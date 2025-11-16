@@ -59,18 +59,6 @@ local function deepCopy(source, deepMate, mark)
 end
 util.deepCopy = deepCopy
 
-local function copyPath(path, extra)
-    local result = {}
-    if path then
-        for i = 1, #path do
-            result[i] = path[i]
-        end
-    end
-    if extra ~= nil then
-        result[#result + 1] = extra
-    end
-    return result
-end
 --- 深度比较两个表格是否相等. 会处理元表.
 ---@param t1 table
 ---@param t2 table
@@ -78,10 +66,8 @@ end
 ---@param cycles [table, table]? 循环检测表
 ---@param thresh1 number? 递归阈值1
 ---@param thresh2 number? 递归阈值2
----@param path any[]? 路径
 ---@return boolean @ 是否相等
----@return table? @ 不相等时的路径
-local function deepCompare(t1, t2, ignoreMeta, cycles, thresh1, thresh2, path)
+local function deepCompare(t1, t2, ignoreMeta, cycles, thresh1, thresh2)
     local ty1 = type(t1)
     local ty2 = type(t2)
     -- 非表格类型可以直接进行比较
@@ -89,7 +75,7 @@ local function deepCompare(t1, t2, ignoreMeta, cycles, thresh1, thresh2, path)
         if t1 == t2 then
             return true
         end
-        return false, copyPath(path)
+        return false
     end
     local mt1 = debugGetmetatable(t1)
     local mt2 = debugGetmetatable(t2)
@@ -117,23 +103,20 @@ local function deepCompare(t1, t2, ignoreMeta, cycles, thresh1, thresh2, path)
     cycles[1][t1] = cycles[1][t1] + 1
     cycles[2][t2] = cycles[2][t2] + 1
 
-    path = path or {}
-
+    local same = true
     for k1, v1 in next, t1 do
         local v2 = t2[k1]
         if v2 == nil then
-            return false, copyPath(path, k1)
+            return false
         end
-        path[#path + 1] = k1
-        local same, crumbs = deepCompare(v1, v2, nil, cycles, thresh1, thresh2, path)
+        same = deepCompare(v1, v2, nil, cycles, thresh1, thresh2)
         if not same then
-            return false, crumbs or copyPath(path)
+            return false
         end
-        path[#path] = nil
     end
     for k2, _ in next, t2 do
         -- 检查每个元素是否有t1的对应项, 实际比较已经在上面的循环中完成
-        if t1[k2] == nil then return false, copyPath(path, k2) end
+        if t1[k2] == nil then return false end
     end
 
     cycles[1][t1] = cycles[1][t1] - 1

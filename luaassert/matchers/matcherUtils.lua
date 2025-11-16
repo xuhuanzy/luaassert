@@ -1,6 +1,15 @@
 local colored = require("luaassert.formatters.colored")
 local stringFormat = string.format
-local util = require("luaassert.util")
+local deepCompare = require("luaassert.util").deepCompare
+local diff = require("luaassert.utils.diff").diff
+local formatValue = require("luaassert.utils.diff").formatValue
+local tostring = tostring
+local type = type
+local tableInsert = table.insert
+local tableSort = table.sort
+local pairs = pairs
+local ipairs = ipairs
+local tableConcat = table.concat
 ---@namespace Luaassert
 
 ---@export
@@ -12,14 +21,6 @@ local RECEIVED_COLOR = colored.red
 local INVERTED_COLOR = colored.inverse
 local BOLD_WEIGHT = colored.bold
 local DIM_COLOR = colored.dim
-local tostring = tostring
-local type = type
-local tableInsert = table.insert
-local tableSort = table.sort
-local pairs = pairs
-local ipairs = ipairs
-local tableConcat = table.concat
-
 export.EXPECTED_COLOR = EXPECTED_COLOR
 export.RECEIVED_COLOR = RECEIVED_COLOR
 export.INVERTED_COLOR = INVERTED_COLOR
@@ -97,66 +98,6 @@ local function replaceTrailingSpaces(text)
   return result
 end
 
-local function formatKey(key)
-  local ty = type(key)
-  if ty == "string" then
-    return stringFormat("%q", key)
-  elseif ty == "number" then
-    return stringFormat("[%s]", tostring(key))
-  end
-  return stringFormat("[%s]", tostring(key))
-end
-
--- 共享的递归格式化函数，传入外层的深度/宽度限制与循环表缓存，避免重复创建闭包
-local function formatValue(value, depth, maxDepth, maxWidth, seen)
-  local ty = type(value)
-  if ty == "string" then
-    return stringFormat("%q", value)
-  elseif ty == "number" or ty == "boolean" or ty == "nil" then
-    return tostring(value)
-  elseif ty ~= "table" then
-    return stringFormat("<%s>", ty)
-  end
-
-  if seen[value] then
-    return "[Circular]"
-  end
-  if depth <= 0 then
-    return "{...}"
-  end
-
-  seen[value] = true
-  local parts = {}
-  local indent = string.rep("  ", (maxDepth - depth))
-  local nextIndent = indent .. "  "
-
-  parts[#parts + 1] = "{"
-  local keys = {}
-  for k, _ in pairs(value) do
-    tableInsert(keys, k)
-  end
-  tableSort(keys, function(a, b)
-    return tostring(a) < tostring(b)
-  end)
-
-  local limit = math.min(#keys, maxWidth)
-  for i = 1, limit do
-    local k = keys[i]
-    parts[#parts + 1] = "\n" .. nextIndent ..
-        stringFormat("%s: %s", formatKey(k), formatValue(value[k], depth - 1, maxDepth, maxWidth, seen))
-    if i < limit then
-      parts[#parts] = parts[#parts] .. ","
-    end
-  end
-  if #keys > maxWidth then
-    parts[#parts + 1] = "\n" .. nextIndent .. "..."
-  end
-  parts[#parts + 1] = "\n" .. indent .. "}"
-
-  seen[value] = nil
-  return tableConcat(parts)
-end
-
 --- 字符串化对象
 ---@param object any 要字符串化的对象
 ---@param maxDepth number? 最大深度
@@ -195,177 +136,31 @@ end
 
 
 
---- 渲染差异行
----@param marker string|nil -- "+" / "-" / nil
----@param indent integer
----@param text string
+--- 打印差异或字符串化
+---@param expected any 期望值
+---@param received any 接收值
+---@param expectedLabel string 期望值标签
+---@param receivedLabel string 接收值标签
 ---@return string
-local function renderLine(marker, indent, text)
-  local prefix = marker and (marker .. " ") or "  "
-  local colorize = marker == "+" and RECEIVED_COLOR
-      or marker == "-" and EXPECTED_COLOR
-      or DIM_COLOR
-  return colorize(prefix .. string.rep("  ", indent) .. text)
-end
-
----@param entries table[]
----@param marker string|nil
----@param indent integer
----@param prefix string
----@param value any
----@param includeComma boolean
----@param visited table<any, boolean>?
-local function appendValueLines(entries, marker, indent, prefix, value, includeComma, visited)
-  local suffix = includeComma and "," or ""
-  local valueType = type(value)
-  if valueType ~= "table" then
-    tableInsert(entries, {
-      marker = marker,
-      indent = indent,
-      text = prefix .. stringify(value, 3, 5) .. suffix,
-    })
-    return
-  end
-
-  -- 展开表为逐行结构，标记每个字段的 +/-，保证行数统计准确，同时处理循环引用
-  visited = visited or {}
-  if visited[value] then
-    tableInsert(entries, {
-      marker = marker,
-      indent = indent,
-      text = prefix .. "[Circular]" .. suffix,
-    })
-    return
-  end
-
-  visited[value] = true
-  tableInsert(entries, { marker = marker, indent = indent, text = prefix .. "{" })
-  local keys = {}
-  for k, _ in pairs(value) do
-    tableInsert(keys, k)
-  end
-  tableSort(keys, function(a, b)
-    return tostring(a) < tostring(b)
-  end)
-  for _, key in ipairs(keys) do
-    appendValueLines(entries, marker, indent + 1, formatKey(key) .. ": ", value[key], true, visited)
-  end
-  tableInsert(entries, { marker = marker, indent = indent, text = "}" .. suffix })
-  visited[value] = nil
-end
-
---- 构建对象差异
----@param expected any
----@param received any
----@param depth integer
----@return table[]
-local function buildDiff(expected, received, depth)
-  depth = depth or 0
-
-  if type(expected) ~= "table" or type(received) ~= "table" then
-    local entries = {}
-    appendValueLines(entries, "-", depth, "", expected, false)
-    appendValueLines(entries, "+", depth, "", received, false)
-    return entries
-  end
-
-  local entries = {}
-  tableInsert(entries, { marker = nil, indent = depth, text = "{" })
-
-  local keys = {}
-  local seenKeys = {}
-  for k, _ in pairs(expected) do
-    keys[#keys + 1] = k
-    seenKeys[k] = true
-  end
-  for k, _ in pairs(received) do
-    if not seenKeys[k] then
-      keys[#keys + 1] = k
-    end
-  end
-  tableSort(keys, function(a, b)
-    return tostring(a) < tostring(b)
-  end)
-
-  for _, key in ipairs(keys) do
-    local expVal = expected[key]
-    local recVal = received[key]
-    local linePrefix = formatKey(key) .. ": "
-    if expVal == nil then
-      appendValueLines(entries, "+", depth + 1, linePrefix, recVal, true)
-    elseif recVal == nil then
-      appendValueLines(entries, "-", depth + 1, linePrefix, expVal, true)
-    else
-      local same = util.deepCompare and util.deepCompare(expVal, recVal)
-      if same then
-        appendValueLines(entries, nil, depth + 1, linePrefix, expVal, true)
-      elseif type(expVal) == "table" and type(recVal) == "table" then
-        local childEntries = buildDiff(expVal, recVal, depth + 1)
-        if #childEntries > 0 then
-          childEntries[1].text = linePrefix .. childEntries[1].text
-          childEntries[#childEntries].text = childEntries[#childEntries].text .. ","
-          for _, entry in ipairs(childEntries) do
-            tableInsert(entries, entry)
-          end
-        end
-      else
-        appendValueLines(entries, "-", depth + 1, linePrefix, expVal, true)
-        appendValueLines(entries, "+", depth + 1, linePrefix, recVal, true)
-      end
-    end
-  end
-
-  tableInsert(entries, { marker = nil, indent = depth, text = "}" })
-  return entries
-end
-
----@param entries table[]
----@return integer, integer
-local function countMarkers(entries)
-  local minus, plus = 0, 0
-  for _, entry in ipairs(entries) do
-    if entry.marker == "-" then
-      minus = minus + 1
-    elseif entry.marker == "+" then
-      plus = plus + 1
-    end
-  end
-  return minus, plus
-end
-
---- 生成完整差异消息
----@param matcherName string
----@param received any
----@param expected any
----@param crumbs any[]?
----@param options MatcherHintOptions
-export.formatDiffMessage = function(matcherName, received, expected, crumbs, options)
+function export.printDiffOrStringify(expected, received, expectedLabel, receivedLabel)
   local expectedIsTable = type(expected) == "table"
   local receivedIsTable = type(received) == "table"
 
-  -- 只要有一侧不是表，不进入逐行 diff，直接单行展示，避免标记计数与噪音
+  -- 只要有一侧不是表则直接单行展示
   if not expectedIsTable or not receivedIsTable then
     local simpleLines = {
       EXPECTED_COLOR(stringFormat("Expected: %s", stringifyInline(expected))),
       RECEIVED_COLOR(stringFormat("Received: %s", stringifyInline(received))),
     }
-    return export.matcherHint(matcherName, nil, nil, options) .. "\n\n" .. tableConcat(simpleLines, "\n")
+    return tableConcat(simpleLines, "\n")
   end
 
-  local diffEntries = buildDiff(expected, received, 0)
-
-  local minusCount, plusCount = countMarkers(diffEntries)
-  local lines = {
-    EXPECTED_COLOR(stringFormat("- Expected  - %d", minusCount)),
-    RECEIVED_COLOR(stringFormat("+ Received  + %d", plusCount)),
-    "",
-  }
-
-  for _, entry in ipairs(diffEntries) do
-    tableInsert(lines, renderLine(entry.marker, entry.indent, entry.text))
-  end
-
-  return export.matcherHint(matcherName, nil, nil, options) .. "\n\n" .. tableConcat(lines, "\n")
+  local difference = diff(expected, received, {
+    aAnnotation = expectedLabel,
+    bAnnotation = receivedLabel,
+    includeChangeCounts = true,
+  })
+  return difference
 end
 
 return export

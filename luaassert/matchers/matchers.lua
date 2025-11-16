@@ -1,7 +1,14 @@
 local i18n = require("luaassert.languages.i18n")
 local matcherHint = require("luaassert.matchers.matcherUtils").matcherHint
 local deepCompare = require("luaassert.util").deepCompare
+local printDiffOrStringify = require("luaassert.matchers.matcherUtils").printDiffOrStringify
+local printExpected = require("luaassert.matchers.matcherUtils").printExpected
 ---@namespace Luaassert
+
+local EXPECTED_LABEL = 'Expected'; ---@readonly
+local RECEIVED_LABEL = 'Received'; ---@readonly
+local EXPECTED_VALUE_LABEL = 'Expected value'; ---@readonly
+local RECEIVED_VALUE_LABEL = 'Received value'; ---@readonly
 
 ---@type MatchersObject
 local matchers = {
@@ -48,23 +55,20 @@ local matchers = {
             comment = i18n("深度比较"),
             isNegate = self.isNegate,
         }
-        local pass, crumbs = deepCompare(self.actual, expected)
+        local pass = deepCompare(self.actual, expected)
         local message = pass and function()
-            return matcherHint(matcherName, nil, nil, options)
+            return matcherHint(matcherName, nil, nil, options) ..
+                "\n\n" ..
+                "Expected: not" .. printExpected(expected)
         end or function()
-            if self.isNegate then
-                return matcherHint(matcherName, nil, nil, options)
-            end
-            return require("luaassert.matchers.matcherUtils").formatDiffMessage(matcherName, self.actual, expected,
-                crumbs, options)
+            return matcherHint(matcherName, nil, nil, options)
+                .. "\n\n" ..
+                printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
         end
         -- 传递一些实际值和期望值, 用于生成错误消息
         return {
             passed = pass,
             message = message,
-            actual = self.actual,
-            expected = expected,
-            name = matcherName,
         }
     end,
 }

@@ -29,6 +29,8 @@ local Assertion = {}
 Assertion.__index = function(self, key)
     if key == "negate" and self.context.isNegate == false then
         self.context.isNegate = true
+        ---@diagnostic disable-next-line: return-type-mismatch
+        return self
     end
     local method = rawget(Assertion, key)
     if method then
@@ -57,9 +59,10 @@ end
 ---@return Assertion
 function Assertion.new(actual)
     return setmetatable({
+        ---@type MatcherContext
         context = {
             actual = actual,
-            negate = false,
+            isNegate = false,
         },
     }, Assertion)
 end

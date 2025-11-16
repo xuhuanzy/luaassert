@@ -3,7 +3,7 @@
 ---@alias PartialFunction<T> { [P in keyof T]: T[P] extends function and T[P]? or T[P]; }
 
 ---@class Inverse<T>
----@field negate T
+---@field negate T 取反断言
 
 ---@alias Tester fun(self: TesterContext, a: any, b: any, customTesters: Tester[]): boolean?
 
