@@ -45,6 +45,7 @@
 ---@field toBe fun(self: self, expected: any) 断言实际值与预期值相等
 ---@field toBeType fun(self: self, expectedType: "nil" | "number" | "string" | "boolean" | "table" | "function" | "thread" | "userdata") 断言实际值类型与预期类型相等
 ---@field toBeInteger fun(self: self) 断言实际值是否为整数
+---@field toEqual fun(self: self, expected: any) 断言实际值与预期值深度相等
 
 
 

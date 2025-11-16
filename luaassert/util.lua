@@ -1,9 +1,18 @@
 local type = type
 local debugGetmetatable = debug.getmetatable
 local debugSetmetatable = debug.setmetatable
+local tableInsert = table.insert
+local next = next
+---@diagnostic disable-next-line: access-invisible
+local _unpack = table.unpack or unpack
+local unpack = function(t, i, j) return _unpack(t, i or 1, j or t.n or #t) end
+local pack = function(...) return { n = select("#", ...), ... } end
 
 ---@export
 local util = {}
+
+util.pack = pack
+util.unpack = unpack
 
 -- 查询调用栈中第一个不在调用者所在文件中的函数调用层级以报告错误
 ---@param level integer? 用作调用者源文件的级别
@@ -20,82 +29,6 @@ function util.errorLevel(level)
     end
     if level > 1 then level = level - 1 end -- 扣除 errorlevel() 本身的调用层级
     return level
-end
-
-local arglist_mt = {}
-
----@diagnostic disable-next-line: access-invisible
-local _unpack = table.unpack or unpack
-local unpack = function(t, i, j) return _unpack(t, i or 1, j or t.n or #t) end
-local pack = function(...) return { n = select("#", ...), ... } end
-util.pack = pack
-util.unpack = unpack
-
-
-function util.deepcompare(t1, t2, ignore_mt, cycles, thresh1, thresh2)
-    local ty1 = type(t1)
-    local ty2 = type(t2)
-    -- non-table types can be directly compared
-    if ty1 ~= 'table' or ty2 ~= 'table' then return t1 == t2 end
-    local mt1 = debug.getmetatable(t1)
-    local mt2 = debug.getmetatable(t2)
-    -- would equality be determined by metatable __eq?
-    if mt1 and mt1 == mt2 and mt1.__eq then
-        -- then use that unless asked not to
-        if not ignore_mt then return t1 == t2 end
-    else -- we can skip the deep comparison below if t1 and t2 share identity
-        if rawequal(t1, t2) then return true end
-    end
-
-    -- handle recursive tables
-    cycles = cycles or { {}, {} }
-    thresh1, thresh2 = (thresh1 or 1), (thresh2 or 1)
-    cycles[1][t1] = (cycles[1][t1] or 0)
-    cycles[2][t2] = (cycles[2][t2] or 0)
-    if cycles[1][t1] == 1 or cycles[2][t2] == 1 then
-        thresh1 = cycles[1][t1] + 1
-        thresh2 = cycles[2][t2] + 1
-    end
-    if cycles[1][t1] > thresh1 and cycles[2][t2] > thresh2 then
-        return true
-    end
-
-    cycles[1][t1] = cycles[1][t1] + 1
-    cycles[2][t2] = cycles[2][t2] + 1
-
-    for k1, v1 in next, t1 do
-        local v2 = t2[k1]
-        if v2 == nil then
-            return false, { k1 }
-        end
-
-        local same, crumbs = util.deepcompare(v1, v2, nil, cycles, thresh1, thresh2)
-        if not same then
-            crumbs = crumbs or {}
-            table.insert(crumbs, k1)
-            return false, crumbs
-        end
-    end
-    for k2, _ in next, t2 do
-        -- only check whether each element has a t1 counterpart, actual comparison
-        -- has been done in first loop above
-        if t1[k2] == nil then return false, { k2 } end
-    end
-
-    cycles[1][t1] = cycles[1][t1] - 1
-    cycles[2][t2] = cycles[2][t2] - 1
-
-    return true
-end
-
-function util.shallowcopy(t)
-    if type(t) ~= "table" then return t end
-    local copy = {}
-    setmetatable(copy, getmetatable(t))
-    for k, v in next, t do
-        copy[k] = v
-    end
-    return copy
 end
 
 ---深拷贝. 会处理元表.
@@ -124,10 +57,105 @@ local function deepCopy(source, deepMate, mark)
     end
     return copy
 end
-
 util.deepCopy = deepCopy
 
+local function copyPath(path, extra)
+    local result = {}
+    if path then
+        for i = 1, #path do
+            result[i] = path[i]
+        end
+    end
+    if extra ~= nil then
+        result[#result + 1] = extra
+    end
+    return result
+end
+--- 深度比较两个表格是否相等. 会处理元表.
+---@param t1 table
+---@param t2 table
+---@param ignoreMeta boolean? 是否忽略元表
+---@param cycles [table, table]? 循环检测表
+---@param thresh1 number? 递归阈值1
+---@param thresh2 number? 递归阈值2
+---@param path any[]? 路径
+---@return boolean @ 是否相等
+---@return table? @ 不相等时的路径
+local function deepCompare(t1, t2, ignoreMeta, cycles, thresh1, thresh2, path)
+    local ty1 = type(t1)
+    local ty2 = type(t2)
+    -- 非表格类型可以直接进行比较
+    if ty1 ~= 'table' or ty2 ~= 'table' then
+        if t1 == t2 then
+            return true
+        end
+        return false, copyPath(path)
+    end
+    local mt1 = debugGetmetatable(t1)
+    local mt2 = debugGetmetatable(t2)
+    -- 如果两个表的元表相等, 且元表中定义了 __eq 方法, 则使用该方法进行比较, 除非忽略元表
+    if mt1 and mt1 == mt2 and mt1.__eq then
+        if not ignoreMeta then return t1 == t2 end
+    else
+        -- 如果t1和t2具有相同的标识, 我们可以跳过下面的深度比较
+        if rawequal(t1, t2) then return true end
+    end
 
+    -- 如果t1和t2是递归表, 则使用循环检测避免无限递归
+    cycles = cycles or { {}, {} }
+    thresh1, thresh2 = (thresh1 or 1), (thresh2 or 1)
+    cycles[1][t1] = (cycles[1][t1] or 0)
+    cycles[2][t2] = (cycles[2][t2] or 0)
+    if cycles[1][t1] == 1 or cycles[2][t2] == 1 then
+        thresh1 = cycles[1][t1] + 1
+        thresh2 = cycles[2][t2] + 1
+    end
+    if cycles[1][t1] > thresh1 and cycles[2][t2] > thresh2 then
+        return true
+    end
+
+    cycles[1][t1] = cycles[1][t1] + 1
+    cycles[2][t2] = cycles[2][t2] + 1
+
+    path = path or {}
+
+    for k1, v1 in next, t1 do
+        local v2 = t2[k1]
+        if v2 == nil then
+            return false, copyPath(path, k1)
+        end
+        path[#path + 1] = k1
+        local same, crumbs = deepCompare(v1, v2, nil, cycles, thresh1, thresh2, path)
+        if not same then
+            return false, crumbs or copyPath(path)
+        end
+        path[#path] = nil
+    end
+    for k2, _ in next, t2 do
+        -- 检查每个元素是否有t1的对应项, 实际比较已经在上面的循环中完成
+        if t1[k2] == nil then return false, copyPath(path, k2) end
+    end
+
+    cycles[1][t1] = cycles[1][t1] - 1
+    cycles[2][t2] = cycles[2][t2] - 1
+
+    return true
+end
+util.deepCompare = deepCompare
+
+
+local arglist_mt = {}
+
+
+function util.shallowcopy(t)
+    if type(t) ~= "table" then return t end
+    local copy = {}
+    setmetatable(copy, getmetatable(t))
+    for k, v in next, t do
+        copy[k] = v
+    end
+    return copy
+end
 
 -----------------------------------------------
 -- Copies arguments as a list of arguments
@@ -172,7 +200,7 @@ local function matcharg(args, argrefs, specs)
             if not spec(argval) then
                 return false
             end
-        elseif (spec == nil or not util.deepcompare(argval, spec)) then
+        elseif (spec == nil or not util.deepCompare(argval, spec)) then
             return false
         end
     end
