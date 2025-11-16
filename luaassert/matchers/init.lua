@@ -1,7 +1,7 @@
 local i18n = require("luaassert.languages.i18n")
 ---@namespace Luaassert
 
----@export
+---@export namespace
 local export = {}
 
 local MATCHERS_OBJECT <const> = {}
@@ -51,6 +51,7 @@ export.getMatchers = function()
     return _G[MATCHERS_OBJECT].matchers
 end
 
+--- 设置匹配器
 ---@param matchers MatchersObject
 ---@param isInternal boolean
 export.setMatchers = function(matchers, isInternal)

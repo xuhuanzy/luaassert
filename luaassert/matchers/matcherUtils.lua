@@ -1,4 +1,4 @@
-local colored = require("luaassert.formatters.colored")
+local colored = require('luaassert.utils.colored')
 local stringFormat = string.format
 local diff = require("luaassert.utils.diff").diff
 local format = require("luaassert.utils.prettyFormat").format
@@ -6,7 +6,7 @@ local type = type
 local tableConcat = table.concat
 ---@namespace Luaassert
 
----@export
+---@export namespace
 local export = {}
 
 local SPACE_SYMBOL = '·'

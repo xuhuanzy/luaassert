@@ -1,7 +1,5 @@
 local getMatchers = require("luaassert.matchers").getMatchers
-local setMatchers = require("luaassert.matchers").setMatchers
 local i18n = require("luaassert.languages.i18n")
-local matcherHint = require('luaassert.matchers.matcherUtils').matcherHint
 local matcherUtils = require("luaassert.matchers.matcherUtils")
 local util = require("luaassert.util")
 local deepCopy = require("luaassert.util").deepCopy
@@ -67,10 +65,10 @@ function Assertion.new(actual)
     }, Assertion)
 end
 
+---@export namespace
 ---@class Expect
 ---@overload fun<T>(actual: T): Assertion<T>
 local expect = {}
-
 
 local ExpectMetatable = {
     ---@param actual any
@@ -79,6 +77,4 @@ local ExpectMetatable = {
     end,
 }
 
-setmetatable(expect, ExpectMetatable)
-
-return expect
+return setmetatable(expect, ExpectMetatable)

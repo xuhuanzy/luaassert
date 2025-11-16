@@ -1,13 +1,16 @@
 ---@diagnostic disable-next-line: access-invisible
 local unpack = table.unpack or unpack
 
+---@namespace Luaassert
+
 local registry = {}
 ---@type string, string
 local currentLocale, fallbackLocale
 
----@alias LuaAssert.I18n.Locale "en" | "zh"
+---@alias Luaassert.I18n.Locale "en" | "zh"
 
----@class LuaAssert.I18n
+---@export namespace
+---@class Luaassert.I18n
 ---@overload fun(key: string, ...: any): string
 local M = setmetatable({}, {
     __call = function(self, key, ...)
@@ -21,7 +24,7 @@ local M = setmetatable({}, {
 })
 
 ---@param key string
----@param value {[LuaAssert.I18n.Locale]: string}
+---@param value {[Luaassert.I18n.Locale]: string}
 function M:set(key, value)
     for locale, str in pairs(value) do
         registry[locale][key] = str
@@ -29,7 +32,7 @@ function M:set(key, value)
 end
 
 --- 设置语言环境
----@param locale LuaAssert.I18n.Locale
+---@param locale Luaassert.I18n.Locale
 function M:setLocale(locale)
     currentLocale = locale
     if not registry[currentLocale] then
@@ -38,7 +41,7 @@ function M:setLocale(locale)
 end
 
 --- 设置默认语言环境
----@param locale LuaAssert.I18n.Locale
+---@param locale Luaassert.I18n.Locale
 function M:setFallbackLocale(locale)
     fallbackLocale = locale
     if not registry[fallbackLocale] then
@@ -47,7 +50,7 @@ function M:setFallbackLocale(locale)
 end
 
 function M:translate()
-    
+
 end
 
 M:setLocale("en")

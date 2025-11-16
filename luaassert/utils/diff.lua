@@ -1,6 +1,8 @@
+---@namespace Luaassert
+
 local stringFormat = string.format
 local deepCompare = require("luaassert.util").deepCompare
-local colored = require("luaassert.formatters.colored")
+local colored = require('luaassert.utils.colored')
 local tostring = tostring
 local type = type
 local tableInsert = table.insert

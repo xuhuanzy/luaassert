@@ -10,6 +10,7 @@ local RECEIVED_LABEL = 'Received'; ---@readonly
 local EXPECTED_VALUE_LABEL = 'Expected value'; ---@readonly
 local RECEIVED_VALUE_LABEL = 'Received value'; ---@readonly
 
+---@export namespace
 ---@type MatchersObject
 local matchers = {
     toBe = function(self, expected)

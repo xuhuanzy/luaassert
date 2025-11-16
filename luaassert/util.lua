@@ -1,3 +1,5 @@
+---@namespace Luaassert
+
 local type = type
 local debugGetmetatable = debug.getmetatable
 local debugSetmetatable = debug.setmetatable
@@ -8,7 +10,7 @@ local _unpack = table.unpack or unpack
 local unpack = function(t, i, j) return _unpack(t, i or 1, j or t.n or #t) end
 local pack = function(...) return { n = select("#", ...), ... } end
 
----@export
+---@export namespace
 local util = {}
 
 util.pack = pack
