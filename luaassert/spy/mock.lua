@@ -272,7 +272,7 @@ local function spyOn(object, key)
     local mockInstance = createMockInstance({
         originalImplementation = original,
         restore = restore,
-        instanceContext = defaultCaptureContext,
+        captureInstance = defaultCaptureContext,
         name = name,
     })
 
