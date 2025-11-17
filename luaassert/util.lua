@@ -15,6 +15,7 @@ local util = {}
 
 util.pack = pack
 util.unpack = unpack
+util.emptyFunction = function() end
 
 -- 查询调用栈中第一个不在调用者所在文件中的函数调用层级以报告错误
 ---@param level integer? 用作调用者源文件的级别

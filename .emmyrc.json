@@ -10,7 +10,7 @@
   },
   "strict": {
     "requirePath": true,
-    "arrayIndex": true,
+    "arrayIndex": false,
     "metaOverrideFileDefine": true,
     "docBaseConstMatchBaseType": true
   },

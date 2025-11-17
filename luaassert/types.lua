@@ -1,6 +1,6 @@
 ---@namespace Luaassert
 
----@alias PartialFunction<T> { [P in keyof T]: T[P] extends function and T[P]? or T[P]; }
+---@alias PartialFunction<T> { [P in keyof T]: P extends "__index" and nil or T[P] extends function and T[P]? or T[P]; }
 
 ---@class Inverse<T>
 ---@field not_ T 取反断言

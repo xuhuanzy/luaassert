@@ -1,7 +1,7 @@
 local getMatchers = require("luaassert.matchers").getMatchers
 local i18n = require("luaassert.languages.i18n")
 local matcherUtils = require("luaassert.matchers.matcherUtils")
-local util = require("luaassert.util")
+local errorLevel = require("luaassert.util").errorLevel
 local deepCopy = require("luaassert.util").deepCopy
 ---@namespace Luaassert
 
@@ -11,7 +11,7 @@ local deepCopy = require("luaassert.util").deepCopy
 local function processResult(context, result)
     if (result.passed and context.isNot) or (not result.passed and not context.isNot) then
         local message = result.message and result.message() or matcherUtils.RECEIVED_COLOR(i18n("没有为此匹配器指定消息。"))
-        error(message, util.errorLevel())
+        error(message, errorLevel())
     end
 end
 
@@ -76,5 +76,5 @@ local ExpectMetatable = {
         return Assertion.new(actual)
     end,
 }
-
-return setmetatable(expect, ExpectMetatable)
+setmetatable(expect, ExpectMetatable)
+return expect
