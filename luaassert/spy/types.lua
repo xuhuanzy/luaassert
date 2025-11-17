@@ -32,3 +32,5 @@
 ---@field resetToMockImplementation? boolean @是否在重置时恢复默认实现.
 ---@field mockImplementation? Procedure @模拟实现函数.
 ---@field resetToMockName? boolean @是否在重置时恢复默认名称.
+---@field restore? fun() @恢复原始实现.
+

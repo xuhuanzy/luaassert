@@ -1,13 +1,10 @@
 local emptyFunction = require("luaassert.util").emptyFunction
--- 这个模块实现了一个非常轻量的 mock/spy 系统，核心目标是对标 Vitest/Jest 的同步行为：
--- 1. vi.fn()/jest.fn() => 通过 fn() 创建可记录调用信息的函数。
--- 2. vi.spyOn()/jest.spyOn() => 包装对象方法，同时支持恢复、清空、重置等能力。
--- 由于 Lua 没有原生 class，我们通过元表来实现 Mock 实例，并显式追踪状态。
+local i18n = require("luaassert.languages.i18n")
 
 local type = type
 local select = select
-local tableInsert = table.insert
 local tableRemove = table.remove
+local stringFormat = string.format
 ---@namespace Luaassert
 
 -- 调用顺序计数器
@@ -53,10 +50,6 @@ local MOCK_CONFIGS = setmetatable({}, { __mode = "k" })
 --- 占位符, 用于表示未捕获实例.
 local nilInstance = {} ---@readonly
 
---[[ Mock 类 ----------------------------------------------------------------
-Mock 实例是一个可调用表；将元方法 __call 设置为执行 mock 的核心逻辑。
-我们在这里实现所有与 Jest 行为对应的方法（mockImplementation、mockReset 等）。
----------------------------------------------------------------------------]]
 ---@class Mock<T>
 ---@field package state MockContext
 ---@field package config MockConfig
@@ -111,7 +104,7 @@ end
 
 --- 设置模拟实现
 ---@param implementation Procedure
----@return Mock
+---@return self
 function Mock:mockImplementation(implementation)
     self.config.mockImplementation = implementation
     return self
@@ -127,12 +120,20 @@ function Mock:mockImplementationOnce(implementation)
     return self
 end
 
+--- 接收一个值, 该值将在模拟函数执行时返回.
+---@param value any
+---@return self
 function Mock:mockReturnValue(value)
     return self:mockImplementation(function()
         return value
     end)
 end
 
+--- 接收一个一次性实现的值, 该值将在模拟函数执行时返回.
+---
+--- 如果一次性实现函数已耗尽, 则使用默认实现.
+---@param value any
+---@return self
 function Mock:mockReturnValueOnce(value)
     return self:mockImplementationOnce(function()
         return value
@@ -149,7 +150,7 @@ function Mock:mockClear()
     return self
 end
 
----重置 mock，将实现还原到创建时的状态。
+---重置 mock, 将实现还原到创建时的状态.
 function Mock:mockReset()
     self:mockClear()
     local config = self.config
@@ -169,20 +170,18 @@ function Mock:mockReset()
     return self
 end
 
----对 spyOn 来说，restore 需要把对象方法替换回原始实现。
 function Mock:mockRestore()
     self:mockReset()
+    if self.restoreConfig.restore then
+        self.restoreConfig.restore()
+    end
     return self
 end
 
 function Mock:getMockName()
-    return self.name or "mock.fn()"
+    return self.config.mockName or "mock.fn()"
 end
 
---[[ 工厂函数 ---------------------------------------------------------------
-createMockInstance 是 FN/Spy 的公共构建逻辑：设置元表、初始化状态、
-并把实例注册到全局弱表里，这样全局 API 能触达它们。
----------------------------------------------------------------------------]]
 ---@param options? MockInstanceOption
 ---@return Mock
 local function createMockInstance(options)
@@ -207,6 +206,7 @@ local function createMockInstance(options)
             resetToMockImplementation = options.resetToMockImplementation,
             mockImplementation = options.mockImplementation,
             resetToMockName = options.resetToMockName,
+            restore = options.restore,
         }
     }
     local mock = setmetatable(mock, Mock)
@@ -226,7 +226,7 @@ local function createMockInstance(options)
     return mock
 end
 
----判断一个值是否为 Mock
+--- 检查给定参数是否为 mock 函数.
 ---@param fn any
 ---@return boolean
 local function isMockFunction(fn)
@@ -237,7 +237,7 @@ local function isMockFunction(fn)
     return fn._isMockFunction == true
 end
 
-
+--- 创建监视程序.
 ---@generic T: Procedure
 ---@param originalImplementation T?
 ---@return Mock<T>
@@ -248,10 +248,6 @@ local function fn(originalImplementation)
     })
 end
 
---[[ spyOn -----------------------------------------------------------------
-spyOn 针对对象/表方法：替换为 mock，同时保留 restore 钩子。
-captureContext 会记录 self 以模拟 jest.fn().mock.instances/contexts。
----------------------------------------------------------------------------]]
 
 ---默认的上下文捕获函数，返回第一个参数。
 ---@param ... any
@@ -260,17 +256,13 @@ local function defaultCaptureContext(...)
     return select(1, ...)
 end
 
-
----@param object table|userdata
----@param key string|integer
+---@generic T, K
+---@param object T
+---@param key string
 ---@return Mock
 local function spyOn(object, key)
-    assert(object ~= nil, "spyOn: object is required")
-    local t = type(object)
-    assert(t == "table" or t == "userdata", ("spyOn: cannot spy on value of type '%s'"):format(t))
-
     local original = object[key]
-    assert(type(original) == "function", ("spyOn: property '%s' is not a function"):format(tostring(key)))
+    assert(type(original) == "function", stringFormat(i18n("spyOn() 仅能用于监视函数. 但收到 '%s'"), type(original)))
 
     local function restore()
         object[key] = original
@@ -288,25 +280,27 @@ local function spyOn(object, key)
     return mockInstance
 end
 
---[[ 全局操作 ---------------------------------------------------------------
-Vitest 暴露 clear/reset/restoreAllMocks，我们在 Lua 中同样提供，便于测试环境
-一次性处理所有 mock 的状态，尤其适合测试套件之间清理。
----------------------------------------------------------------------------]]
-local function clearAllMocks()
-    for mockInstance in pairs(REGISTERED_MOCKS) do
-        mockInstance:mockClear()
-    end
-end
-
-local function resetAllMocks()
-    for mockInstance in pairs(REGISTERED_MOCKS) do
-        mockInstance:mockReset()
-    end
-end
-
+--- 该方法会一次性恢复所有由 spyOn 创建的 spy 的原始实现.
+---
+--- 一旦完成还原, 即可重新对其进行监视.
 local function restoreAllMocks()
     for restore in pairs(MOCK_RESTORE) do
         restore()
+    end
+    MOCK_RESTORE = setmetatable({}, { __mode = "k" })
+end
+
+--- 对所有 spies 调用 `.mockClear()`. 这将清除模拟的历史记录, 但不影响模拟的实现.
+local function clearAllMocks()
+    for mock in pairs(REGISTERED_MOCKS) do
+        mock:mockClear()
+    end
+end
+
+--- 对所有 spies 调用 `.mockReset()`. 这将清除模拟的历史记录, 并将每个模拟的实现重置为其原始状态.
+local function resetAllMocks()
+    for mock in pairs(REGISTERED_MOCKS) do
+        mock:mockReset()
     end
 end
 
@@ -315,7 +309,7 @@ return {
     spy = fn,
     spyOn = spyOn,
     isMockFunction = isMockFunction,
+    restoreAllMocks = restoreAllMocks,
     clearAllMocks = clearAllMocks,
     resetAllMocks = resetAllMocks,
-    restoreAllMocks = restoreAllMocks,
 }
