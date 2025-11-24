@@ -58,6 +58,7 @@ local nilInstance = {} ---@readonly
 ---@field private name string
 ---@field private captureInstance? fun(...: any): any @实例捕获函数, 默认捕获第一个参数为实例.
 ---@field private restoreConfig MockRestoreConfig @还原配置
+---@overload fun(...: MockParameters<T>...): MockReturnType<T>
 local Mock = {}
 Mock.__index = Mock
 
@@ -73,6 +74,7 @@ Mock.__call = function(self, ...)
     state.lastCall = args
     state.invocationCallOrder[#state.invocationCallOrder + 1] = nextInvocationCallCounter()
 
+    -- 我们需要确保上下文并不是`nil`避免破坏数组索引
     local context = nilInstance
     if self.captureInstance then
         context = self.captureInstance(...)
@@ -182,6 +184,7 @@ function Mock:getMockName()
     return self.config.mockName or "mock.fn()"
 end
 
+--- 创建 mock 实例.
 ---@param options? MockInstanceOption
 ---@return Mock
 local function createMockInstance(options)
@@ -256,10 +259,10 @@ local function defaultCaptureContext(...)
     return select(1, ...)
 end
 
----@generic T, K
+---@generic T, K extends keyof T
 ---@param object T
----@param key string
----@return Mock
+---@param key K
+---@return Mock<std.RawGet<T, K>>
 local function spyOn(object, key)
     local original = object[key]
     assert(type(original) == "function", stringFormat(i18n("spyOn() 仅能用于监视函数. 但收到 '%s'"), type(original)))

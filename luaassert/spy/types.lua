@@ -12,11 +12,15 @@
 
 ---@alias Procedure fun(...: any...): any
 
----@alias MockParameters<T extends Procedure|table> T extends table and ConstructorParameters<T> or T extends Procedure
----    and Parameters<T> or never
+---@alias MockParameters<T extends Procedure|table> T extends table and ConstructorParameters<T> or
+---     T extends Procedure and Parameters<T> or never
+
+---@alias MockReturnType<T extends Procedure|table> T extends table and nil or T extends Procedure and ReturnType<T> or never
+
+---@alias MockContextCalls<T> T extends any... and any[] or T
 
 ---@class MockContext<T: Procedure|table>
----@field calls MockParameters<T>[] 这是一个包含每次调用所有参数的数组. 数组中的每一项代表该次调用的参数.
+---@field calls (MockContextCalls<MockParameters<T>>)[] 这是一个包含每次调用所有参数的数组. 数组中的每一项代表该次调用的参数.
 ---@field contexts any[] 这是一个包含每次调用时的上下文数组. 数组中的每一项代表该次调用的上下文.
 ---@field invocationCallOrder number[] 模拟执行的顺序。它返回一个数字数组，这些数字会在所有已定义的模拟之间共享。
 ---@field results any[] 这是一个包含每次调用结果的数组. 数组中的每一项代表该次调用的结果.
@@ -33,4 +37,3 @@
 ---@field mockImplementation? Procedure @模拟实现函数.
 ---@field resetToMockName? boolean @是否在重置时恢复默认名称.
 ---@field restore? fun() @恢复原始实现.
-
