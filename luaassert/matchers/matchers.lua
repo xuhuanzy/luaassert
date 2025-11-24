@@ -3,6 +3,7 @@ local matcherHint = require("luaassert.matchers.matcherUtils").matcherHint
 local deepCompare = require("luaassert.util").deepCompare
 local printDiffOrStringify = require("luaassert.matchers.matcherUtils").printDiffOrStringify
 local printExpected = require("luaassert.matchers.matcherUtils").printExpected
+local printReceived = require("luaassert.matchers.matcherUtils").printReceived
 ---@namespace Luaassert
 
 local EXPECTED_LABEL = 'Expected'; ---@readonly
@@ -23,9 +24,13 @@ local matchers = {
 
         local pass = self.actual == expected
         local message = pass and function()
-            return matcherHint(matcherName, nil, nil, options)
+            return matcherHint(matcherName, nil, nil, options) ..
+                "\n\n" ..
+                "Expected: not " .. printExpected(expected)
         end or function()
             return matcherHint(matcherName, nil, nil, options)
+                .. "\n\n" ..
+                printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
         end
 
         return {
@@ -34,18 +39,35 @@ local matchers = {
         }
     end,
     toBeType = function(self, expectedType)
+        local matcherName = "toBeType"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+        local actualType = type(self.actual)
         return {
-            passed = type(self.actual) == expectedType,
+            passed = actualType == expectedType,
             message = function()
-                return i18n("expect: 期望 %s 类型为 %s", self.actual, expectedType)
+                return matcherHint(matcherName, nil, nil, options) ..
+                    "\n\n" ..
+                    printDiffOrStringify(expectedType, actualType, EXPECTED_LABEL, RECEIVED_LABEL)
             end,
         }
     end,
     toBeInteger = function(self)
+        local matcherName = "toBeInteger"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+        local pass = type(self.actual) == "number" and math.type(self.actual) == "integer"
         return {
-            passed = type(self.actual) == "number" and math.type(self.actual) == "integer",
+            passed = pass,
             message = function()
-                return i18n("expect: 期望 %s 为整数", self.actual)
+                return matcherHint(matcherName, nil, '', options) ..
+                    "\n\n" ..
+                    "Received: " ..
+                    printReceived(self.actual)
             end,
         }
     end,
@@ -66,7 +88,6 @@ local matchers = {
                 .. "\n\n" ..
                 printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
         end
-        -- 传递一些实际值和期望值, 用于生成错误消息
         return {
             passed = pass,
             message = message,

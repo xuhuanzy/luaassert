@@ -3,6 +3,7 @@
 local stringFormat = string.format
 local deepCompare = require("luaassert.util").deepCompare
 local colored = require('luaassert.utils.colored')
+local i18n = require("luaassert.languages.i18n")
 local tostring = tostring
 local type = type
 local tableInsert = table.insert
@@ -226,6 +227,9 @@ end
 ---@return string
 function export.diff(a, b, options)
     local diffEntries, minusCount, plusCount = buildDiff(a, b, 0)
+    if minusCount == 0 and plusCount == 0 then
+        return DIM_COLOR(i18n("比较值在视觉上没有差异"))
+    end
     local lines = {
         EXPECTED_COLOR(stringFormat("- Expected  - %d", minusCount)),
         RECEIVED_COLOR(stringFormat("+ Received  + %d", plusCount)),

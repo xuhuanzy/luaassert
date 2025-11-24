@@ -2,6 +2,7 @@ local colored = require('luaassert.utils.colored')
 local stringFormat = string.format
 local diff = require("luaassert.utils.diff").diff
 local format = require("luaassert.utils.prettyFormat").format
+local i18n = require("luaassert.languages.i18n")
 local type = type
 local tableConcat = table.concat
 ---@namespace Luaassert
@@ -124,7 +125,26 @@ export.printExpected = function(value)
   return EXPECTED_COLOR(replaceTrailingSpaces(stringify(value)))
 end
 
+--- 生成标签打印函数, 用于对齐多列文本
+---@param ... string 字符串参数列表
+---@return fun(string: string): string @返回格式化函数
+function export.getLabelPrinter(...)
+  local strings = { ... }
 
+  -- 找到最大长度
+  local maxLength = 0
+  for _, str in ipairs(strings) do
+    if #str > maxLength then
+      maxLength = #str
+    end
+  end
+
+  return function(inputString)
+    local padding = maxLength - #inputString
+    local spaces = string.rep(' ', padding)
+    return string.format('%s: %s', inputString, spaces)
+  end
+end
 
 --- 打印差异或字符串化
 ---@param expected any 期望值
@@ -150,7 +170,19 @@ function export.printDiffOrStringify(expected, received, expectedLabel, received
     bAnnotation = receivedLabel,
     includeChangeCounts = true,
   })
-  return difference
+
+  if difference and difference:find("- " .. (expectedLabel or "Expected"), 1, true) and difference:find("+ " .. (receivedLabel or "Received"), 1, true) then
+    return difference
+  end
+
+  local printLabel = export.getLabelPrinter(expectedLabel, receivedLabel)
+
+  local expectedLine = printLabel(expectedLabel) .. export.printExpected(expected)
+  local receivedLine = printLabel(receivedLabel) .. (stringify(expected) == stringify(received)
+    and i18n("序列化为相同字符串")
+    or export.printReceived(received))
+
+  return expectedLine .. "\n" .. receivedLine
 end
 
 return export
