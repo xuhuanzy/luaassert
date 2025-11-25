@@ -170,6 +170,20 @@ function export.ensureNumbers(received, expected, matcherName, options)
   end
 end
 
+--- 确保预期长度为非负整数
+---@param expected any
+---@param matcherName string
+---@param options MatcherHintOptions?
+function export.ensureExpectedIsNonNegativeInteger(expected, matcherName, options)
+  if type(expected) ~= "number" or expected < 0 or math.type(expected) ~= "integer" then
+    error(export.matcherErrorMessage(
+      export.matcherHint(matcherName, nil, 'expected', options),
+      i18n("预期值(expected)必须为非负整数"),
+      export.printWithType('Expected', expected, export.printExpected)
+    ))
+  end
+end
+
 --- 确保匹配器未接收预期值
 ---@param expected any? 传入的预期值
 ---@param matcherName string 匹配器名称

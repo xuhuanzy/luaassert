@@ -7,9 +7,11 @@ local printExpected = matcherUtils.printExpected
 local printReceived = matcherUtils.printReceived
 local ensureNoExpected = matcherUtils.ensureNoExpected
 local ensureNumbers = matcherUtils.ensureNumbers
+local ensureExpectedIsNonNegativeInteger = matcherUtils.ensureExpectedIsNonNegativeInteger
 local hasToString = require("luaassert.util").hasToString
 local printWithType = matcherUtils.printWithType
 local matcherErrorMessage = matcherUtils.matcherErrorMessage
+local stringFormat = string.format
 ---@namespace Luaassert
 
 local EXPECTED_LABEL = 'Expected'; ---@readonly
@@ -267,6 +269,72 @@ local matchers = {
                     .. "\n\n"
                     .. printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
             end,
+        }
+    end,
+    -- 检查对象是否具有指定长度
+    ---@param expected integer 预期长度
+    ---@param useN boolean? 使用`n`字段表示长度, 默认为 `true`
+    toHaveLength = function(self, expected, useN)
+        local matcherName = "toHaveLength"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+
+        if useN ~= nil then
+            options.secondArgument = 'useN'
+        end
+
+        local actual = self.actual
+        local actualType = type(actual)
+        if actualType ~= "string" and actualType ~= "table" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须是 table 或 string"),
+                printWithType('Received', actual, printReceived)
+            ))
+        end
+
+        ensureExpectedIsNonNegativeInteger(expected, matcherName, options)
+
+        if useN == nil then
+            useN = true
+        end
+
+        local actualLength
+        if actualType == "string" then
+            actualLength = #actual
+        else
+            if useN and type(actual.n) == "number" and math.type(actual.n) == "integer" then
+                actualLength = actual.n
+            else
+                actualLength = #actual
+            end
+        end
+
+        local pass = actualLength == expected
+        local message = function()
+            local labelExpected = "Expected length"
+            local labelReceivedLength = "Received length"
+            local labelReceivedValue = stringFormat("Received %s", actualType)
+            local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceivedLength, labelReceivedValue)
+            local expectedLine = printLabel(labelExpected) .. (options.isNot and "not " or "") .. printExpected(expected)
+            local lines = {
+                matcherHint(matcherName, nil, nil, options),
+                "",
+                expectedLine,
+            }
+            if not options.isNot then
+                lines[#lines + 1] = printLabel(labelReceivedLength) .. printReceived(actualLength)
+            end
+            lines[#lines + 1] = printLabel(labelReceivedValue)
+                .. (options.isNot and "    " or "") .. printReceived(self.actual)
+            return table.concat(lines, "\n")
+        end
+
+        return {
+            passed = pass,
+            message = message,
         }
     end,
     -- 检查实际值是否大于预期值

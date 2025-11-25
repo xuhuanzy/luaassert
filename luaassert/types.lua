@@ -55,6 +55,7 @@
 ---@field toBeOneOf fun(self: self, expected: any[]) 实际值是否包含在给定列表中
 ---@field toMatch fun(self: self, expected: string, plain?: boolean) 断言字符串是否与指定模式匹配. 当 `plain` 为 `true` 时, 按字符串查找.
 ---@field toThrowError fun(self: self, expected?: any) 函数执行时是否抛出指定错误消息
+---@field toHaveLength fun(self: self, expected: integer, useN?: boolean) 字符串或表是否具有指定长度. 当 `useN` 为 `true` 时会使用 `n` 字段表示长度, 默认值为 `true`.
 
 
 --- 非对称匹配器
