@@ -22,6 +22,18 @@ export.INVERTED_COLOR = INVERTED_COLOR
 export.BOLD_WEIGHT = BOLD_WEIGHT
 export.DIM_COLOR = DIM_COLOR
 
+--- 生成匹配器错误消息
+---@param hint string 提示
+---@param genericMessage string 通用提示
+---@param specificMessage string? 具体提示
+---@return string
+local function matcherErrorMessage(hint, genericMessage, specificMessage)
+  local message = stringFormat('%s\n\n%s: %s', hint, BOLD_WEIGHT('Matcher error'), genericMessage)
+  if type(specificMessage) == 'string' then
+    message = stringFormat('%s\n\n%s', message, specificMessage)
+  end
+  return message
+end
 
 ---@class MatcherHintOptions
 ---@field comment string? 注释
@@ -117,12 +129,60 @@ local function stringifyInline(value, maxDepth, maxWidth)
   })
 end
 
+--- 打印值及其类型, 用于构建详细错误信息
+---@param name string 标签
+---@param value any 值
+---@param printer? fun(value: any): string 打印函数
+---@return string
+local function printWithType(name, value, printer)
+  local printerFn = printer or stringifyInline
+  return stringFormat('%s has type: %s\n%s has value: %s', name, type(value), name, printerFn(value))
+end
+
 export.printReceived = function(object)
   return RECEIVED_COLOR(replaceTrailingSpaces(stringify(object)))
 end
 
 export.printExpected = function(value)
   return EXPECTED_COLOR(replaceTrailingSpaces(stringify(value)))
+end
+
+--- 确保实际值与预期值都是数字
+---@param received any
+---@param expected any
+---@param matcherName string
+---@param options MatcherHintOptions?
+function export.ensureNumbers(received, expected, matcherName, options)
+  if type(received) ~= "number" then
+    error(matcherErrorMessage(
+      export.matcherHint(matcherName, nil, nil, options),
+      i18n("接收值(received)必须为number"),
+      printWithType('Received', received, export.printReceived)
+    ))
+  end
+
+  if type(expected) ~= "number" then
+    error(matcherErrorMessage(
+      export.matcherHint(matcherName, nil, nil, options),
+      i18n("预期值(expected)必须为number"),
+      printWithType('Expected', expected, export.printExpected)
+    ))
+  end
+end
+
+--- 确保匹配器未接收预期值
+---@param expected any? 传入的预期值
+---@param matcherName string 匹配器名称
+---@param options MatcherHintOptions? 匹配器选项
+function export.ensureNoExpected(expected, matcherName, options)
+  if expected ~= nil then
+    local matcherString = (options and '' or '[.not]') .. matcherName
+    error(matcherErrorMessage(
+      export.matcherHint(matcherString, nil, '', options),
+      i18n('该匹配器不能接收预期(expected)参数'),
+      printWithType('Expected', expected, export.printExpected)
+    ))
+  end
 end
 
 --- 生成标签打印函数, 用于对齐多列文本

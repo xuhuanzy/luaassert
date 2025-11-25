@@ -43,9 +43,16 @@
 --- 匹配器接口
 ---@class (partial) Matchers<T>
 ---@field toBe fun(self: self, expected: any) 浅比较实际值与预期值是否相等, 如需深度比较, 请使用 {@link Luaassert.Matchers.toEqual}.
----@field toBeType fun(self: self, expectedType: "nil"|"number"|"string"|"boolean"|"table"|"function"|"thread"|"userdata") 比较实际值类型与预期类型是否相等
+---@field toBeType fun(self: self, expected: "nil"|"number"|"string"|"boolean"|"table"|"function"|"thread"|"userdata") 比较实际值类型与预期类型是否相等
 ---@field toBeInteger fun(self: self) 实际值是否为整数
+---@field toBeGreaterThan fun(self: self, expected: number) 实际值是否大于预期值
+---@field toBeGreaterThanOrEqual fun(self: self, expected: number) 实际值是否大于或等于预期值
+---@field toBeLessThan fun(self: self, expected: number) 实际值是否小于预期值
+---@field toBeLessThanOrEqual fun(self: self, expected: number) 实际值是否小于或等于预期值
 ---@field toEqual fun(self: self, expected: any) 比较实际值与预期值是否相等, 如果是表, 则进行深度比较.
+---@field toBeFalsy fun(self: self) 实际值是否为假值. 仅有`nil`为假值.
+---@field toBeTruthy fun(self: self) 实际值是否为真值. 非`nil`值均为真值.
+
 
 
 
