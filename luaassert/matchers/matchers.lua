@@ -44,8 +44,8 @@ local matchers = {
         }
     end,
     -- 检查实际值的类型是否与预期值相等
-    toBeType = function(self, expected)
-        local matcherName = "toBeType"
+    toBeTypeOf = function(self, expected)
+        local matcherName = "toBeTypeOf"
         ---@type MatcherHintOptions
         local options = {
             isNot = self.isNot,
@@ -234,6 +234,39 @@ local matchers = {
         return {
             passed = pass,
             message = message,
+        }
+    end,
+    ---@param expected any[] 预期值数组
+    toBeOneOf = function(self, expected)
+        local matcherName = "toBeOneOf"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+
+        if type(expected) ~= "table" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.EXPECTED_COLOR("expected") .. " " .. i18n("值必须是 table"),
+                printWithType('Expected', expected, printExpected)
+            ))
+        end
+
+        local pass = false
+        for _, candidate in ipairs(expected) do
+            if self.actual == candidate then
+                pass = true
+                break
+            end
+        end
+
+        return {
+            passed = pass,
+            message = function()
+                return matcherHint(matcherName, nil, nil, options)
+                    .. "\n\n"
+                    .. printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
+            end,
         }
     end,
     -- 检查实际值是否大于预期值

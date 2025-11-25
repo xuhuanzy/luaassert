@@ -42,8 +42,8 @@
 
 --- 匹配器接口
 ---@class (partial) Matchers<T>
----@field toBe fun(self: self, expected: any) 检查实际值与预期值是否相等(a == b). 如需深度比较, 请使用 {@link Luaassert.Matchers.toEqual}.
----@field toBeType fun(self: self, expected: "nil"|"number"|"string"|"boolean"|"table"|"function"|"thread"|"userdata") 检查实际值类型与预期类型是否相等
+---@field toBe fun(self: self, expected: any) 断言实际值与预期值是否相等(a == b). 如需深度比较, 请使用 {@link Luaassert.Matchers.toEqual}.
+---@field toBeTypeOf fun(self: self, expected: "nil"|"number"|"string"|"boolean"|"table"|"function"|"thread"|"userdata") 断言实际值是否属于接收类型
 ---@field toBeInteger fun(self: self) 实际值是否为整数
 ---@field toBeGreaterThan fun(self: self, expected: number) 实际值是否大于预期值
 ---@field toBeGreaterThanOrEqual fun(self: self, expected: number) 实际值是否大于或等于预期值
@@ -52,6 +52,7 @@
 ---@field toEqual fun(self: self, expected: any) 比较实际值与预期值是否相等, 如果是表, 则进行深度比较.
 ---@field toBeFalsy fun(self: self) 实际值是否为假值. 即是否为`nil`或`false`
 ---@field toBeTruthy fun(self: self) 实际值是否为真值. 即不为`nil`或`false`
+---@field toBeOneOf fun(self: self, expected: any[]) 实际值是否包含在给定列表中
 ---@field toMatch fun(self: self, expected: string, plain?: boolean) 断言字符串是否与指定模式匹配. 当 `plain` 为 `true` 时, 按字符串查找.
 ---@field toThrowError fun(self: self, expected?: any) 函数执行时是否抛出指定错误消息
 
