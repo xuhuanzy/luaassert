@@ -8,6 +8,7 @@ local printReceived = matcherUtils.printReceived
 local ensureNoExpected = matcherUtils.ensureNoExpected
 local ensureNumbers = matcherUtils.ensureNumbers
 local hasToString = require("luaassert.util").hasToString
+local printWithType = matcherUtils.printWithType
 local matcherErrorMessage = matcherUtils.matcherErrorMessage
 ---@namespace Luaassert
 
@@ -152,8 +153,8 @@ local matchers = {
         if type(self.actual) ~= "function" then
             error(matcherErrorMessage(
                 matcherHint(matcherName, nil, 'expected', options),
-                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须为函数"),
-                matcherUtils.printWithType('Received', self.actual, printReceived)
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须是函数"),
+                printWithType('Received', self.actual, printReceived)
             ))
         end
 
@@ -180,6 +181,54 @@ local matchers = {
             return matcherHint(matcherName, nil, nil, options)
                 .. "\n\n" ..
                 printDiffOrStringify(expected, error_message, "Expected message", "Received message")
+        end
+
+        return {
+            passed = pass,
+            message = message,
+        }
+    end,
+    ---@param expected string 模式字符串
+    ---@param plain? boolean 是否使用字面量匹配
+    toMatch = function(self, expected, plain)
+        local matcherName = "toMatch"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+
+        if type(self.actual) ~= "string" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须是字符串"),
+                printWithType('Received', self.actual, printReceived)
+            ))
+        end
+
+        if type(expected) ~= "string" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须是字符串"),
+                printWithType('Expected', expected, printExpected)
+            ))
+        end
+
+        if plain ~= nil then
+            options.secondArgument = 'plain'
+        end
+
+        local startIndex = string.find(self.actual, expected, 1, plain)
+
+        local pass = startIndex ~= nil
+        local message = function()
+            local tag = "pattern: "
+            if plain then
+                tag = "string: "
+            end
+
+            local expectedLine = "Expected " .. tag .. printExpected(expected)
+            local receivedLine = "Received string: " .. printReceived(self.actual)
+            return matcherHint(matcherName, nil, nil, options) .. "\n\n" .. expectedLine .. "\n" .. receivedLine
         end
 
         return {
