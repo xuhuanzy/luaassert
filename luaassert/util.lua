@@ -118,6 +118,13 @@ end
 util.deepCompare = deepCompare
 
 
+-- 检查目标是否有tostring方法
+---@param object any
+---@return boolean
+function util.hasToString(object)
+    return type(object) == "string" or type(rawget(debugGetmetatable(object) or {}, "__tostring")) == "function"
+end
+
 local arglist_mt = {}
 
 
@@ -316,16 +323,6 @@ function util.callable(object)
         return false
     end
     return type(rawget(mt, "__call")) == "function"
-end
-
------------------------------------------------
--- Checks an element has tostring.
--- The type must either be a string or have a metatable
--- containing an '__tostring' function.
--- @param object element to inspect on having tostring or not
--- @return boolean, true if the object has tostring
-function util.hastostring(object)
-    return type(object) == "string" or type(rawget(debug.getmetatable(object) or {}, "__tostring")) == "function"
 end
 
 -----------------------------------------------

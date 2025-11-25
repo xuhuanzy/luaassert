@@ -27,7 +27,7 @@ export.DIM_COLOR = DIM_COLOR
 ---@param genericMessage string 通用提示
 ---@param specificMessage string? 具体提示
 ---@return string
-local function matcherErrorMessage(hint, genericMessage, specificMessage)
+function export.matcherErrorMessage(hint, genericMessage, specificMessage)
   local message = stringFormat('%s\n\n%s: %s', hint, BOLD_WEIGHT('Matcher error'), genericMessage)
   if type(specificMessage) == 'string' then
     message = stringFormat('%s\n\n%s', message, specificMessage)
@@ -134,7 +134,7 @@ end
 ---@param value any 值
 ---@param printer? fun(value: any): string 打印函数
 ---@return string
-local function printWithType(name, value, printer)
+function export.printWithType(name, value, printer)
   local printerFn = printer or stringifyInline
   return stringFormat('%s has type: %s\n%s has value: %s', name, type(value), name, printerFn(value))
 end
@@ -154,18 +154,18 @@ end
 ---@param options MatcherHintOptions?
 function export.ensureNumbers(received, expected, matcherName, options)
   if type(received) ~= "number" then
-    error(matcherErrorMessage(
+    error(export.matcherErrorMessage(
       export.matcherHint(matcherName, nil, nil, options),
       i18n("接收值(received)必须为number"),
-      printWithType('Received', received, export.printReceived)
+      export.printWithType('Received', received, export.printReceived)
     ))
   end
 
   if type(expected) ~= "number" then
-    error(matcherErrorMessage(
+    error(export.matcherErrorMessage(
       export.matcherHint(matcherName, nil, nil, options),
       i18n("预期值(expected)必须为number"),
-      printWithType('Expected', expected, export.printExpected)
+      export.printWithType('Expected', expected, export.printExpected)
     ))
   end
 end
@@ -177,13 +177,15 @@ end
 function export.ensureNoExpected(expected, matcherName, options)
   if expected ~= nil then
     local matcherString = (options and '' or '[.not]') .. matcherName
-    error(matcherErrorMessage(
+    error(export.matcherErrorMessage(
       export.matcherHint(matcherString, nil, '', options),
       i18n('该匹配器不能接收预期(expected)参数'),
-      printWithType('Expected', expected, export.printExpected)
+      export.printWithType('Expected', expected, export.printExpected)
     ))
   end
 end
+
+--- 确保接收
 
 --- 生成标签打印函数, 用于对齐多列文本
 ---@param ... string 字符串参数列表
@@ -215,12 +217,14 @@ end
 function export.printDiffOrStringify(expected, received, expectedLabel, receivedLabel)
   local expectedIsTable = type(expected) == "table"
   local receivedIsTable = type(received) == "table"
+  expectedLabel = expectedLabel or "Expected"
+  receivedLabel = receivedLabel or "Received"
 
   -- 只要有一侧不是表则直接单行展示
   if not expectedIsTable or not receivedIsTable then
     local simpleLines = {
-      EXPECTED_COLOR(stringFormat("Expected: %s", stringifyInline(expected))),
-      RECEIVED_COLOR(stringFormat("Received: %s", stringifyInline(received))),
+      EXPECTED_COLOR(stringFormat("%s: %s", expectedLabel, stringifyInline(expected))),
+      RECEIVED_COLOR(stringFormat("%s: %s", receivedLabel, stringifyInline(received))),
     }
     return tableConcat(simpleLines, "\n")
   end
@@ -231,7 +235,7 @@ function export.printDiffOrStringify(expected, received, expectedLabel, received
     includeChangeCounts = true,
   })
 
-  if difference and difference:find("- " .. (expectedLabel or "Expected"), 1, true) and difference:find("+ " .. (receivedLabel or "Received"), 1, true) then
+  if difference and difference:find("- " .. expectedLabel, 1, true) and difference:find("+ " .. receivedLabel, 1, true) then
     return difference
   end
 

@@ -52,6 +52,7 @@
 ---@field toEqual fun(self: self, expected: any) 比较实际值与预期值是否相等, 如果是表, 则进行深度比较.
 ---@field toBeFalsy fun(self: self) 实际值是否为假值. 仅有`nil`为假值.
 ---@field toBeTruthy fun(self: self) 实际值是否为真值. 非`nil`值均为真值.
+---@field toThrowError fun(self: self, expected?: any) 函数执行时是否抛出指定错误消息
 
 
 

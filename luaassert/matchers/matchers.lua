@@ -1,17 +1,18 @@
 local i18n = require("luaassert.languages.i18n")
-local matcherHint = require("luaassert.matchers.matcherUtils").matcherHint
+local matcherUtils = require("luaassert.matchers.matcherUtils")
+local matcherHint = matcherUtils.matcherHint
 local deepCompare = require("luaassert.util").deepCompare
-local printDiffOrStringify = require("luaassert.matchers.matcherUtils").printDiffOrStringify
-local printExpected = require("luaassert.matchers.matcherUtils").printExpected
-local printReceived = require("luaassert.matchers.matcherUtils").printReceived
-local ensureNoExpected = require("luaassert.matchers.matcherUtils").ensureNoExpected
-local ensureNumbers = require("luaassert.matchers.matcherUtils").ensureNumbers
+local printDiffOrStringify = matcherUtils.printDiffOrStringify
+local printExpected = matcherUtils.printExpected
+local printReceived = matcherUtils.printReceived
+local ensureNoExpected = matcherUtils.ensureNoExpected
+local ensureNumbers = matcherUtils.ensureNumbers
+local hasToString = require("luaassert.util").hasToString
+local matcherErrorMessage = matcherUtils.matcherErrorMessage
 ---@namespace Luaassert
 
 local EXPECTED_LABEL = 'Expected'; ---@readonly
 local RECEIVED_LABEL = 'Received'; ---@readonly
-local EXPECTED_VALUE_LABEL = 'Expected value'; ---@readonly
-local RECEIVED_VALUE_LABEL = 'Received value'; ---@readonly
 
 ---@export namespace
 ---@type MatchersObject
@@ -139,6 +140,51 @@ local matchers = {
                     .. "Received: "
                     .. printReceived(self.actual)
             end,
+        }
+    end,
+    toThrowError = function(self, expected)
+        local matcherName = "toThrowError"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+
+        if type(self.actual) ~= "function" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, 'expected', options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须为函数"),
+                matcherUtils.printWithType('Received', self.actual, printReceived)
+            ))
+        end
+
+        local ok, error_message = pcall(self.actual)
+        local pass = not ok
+        if hasToString(error_message) then
+            error_message = tostring(error_message)
+            error_message = error_message:gsub('^.-:%d+: ', '', 1)
+        end
+        local expectedType = type(expected)
+        if expectedType == "string" then
+            pass = pass and error_message == expected
+        elseif expectedType == "table" then
+            if type(error_message) == "table" then
+                pass = pass and deepCompare(error_message, expected, true)
+            else
+                pass = pass and error_message == expected
+            end
+        else
+            pass = false
+        end
+
+        local message = function()
+            return matcherHint(matcherName, nil, nil, options)
+                .. "\n\n" ..
+                printDiffOrStringify(expected, error_message, "Expected message", "Received message")
+        end
+
+        return {
+            passed = pass,
+            message = message,
         }
     end,
     -- 检查实际值是否大于预期值
