@@ -52,7 +52,11 @@
 ---@field toEqual fun(self: self, expected: any) 比较实际值与预期值是否相等, 如果是表, 则进行深度比较.
 ---@field toBeFalsy fun(self: self) 实际值是否为假值. 即是否为`nil`或`false`
 ---@field toBeTruthy fun(self: self) 实际值是否为真值. 即不为`nil`或`false`
----@field toBeOneOf fun(self: self, expected: any[]) 实际值是否包含在给定列表中
+---@field toBeOneOf fun(self: self, expected: any[]) 断言某个值是否与所提供数组中的任何值匹配
+---@field toContain fun(self: self, expected: any) 断言数组是否包含指定值, 或字符串是否包含给定字面量子串.
+---@field toContainEqual fun(self: self, expected: any) 断言数组是否包含与预期值深度相等的元素.
+---@field toMatchObject fun(self: self, expected: table) 断言实际表是否包含给定表的字段子集.
+---@field toHaveProperty fun(self: self, expectedPath: any[], expectedValue?: any) 断言对象包含指定路径(数组形式), 并可选比较该路径的值(深相等).
 ---@field toMatch fun(self: self, expected: string, plain?: boolean) 断言字符串是否与指定模式匹配. 当 `plain` 为 `true` 时, 按字符串查找.
 ---@field toThrowError fun(self: self, expected?: any) 函数执行时是否抛出指定错误消息
 ---@field toHaveLength fun(self: self, expected: integer, useN?: boolean) 字符串或表是否具有指定长度. 当 `useN` 为 `true` 时会使用 `n` 字段表示长度, 默认值为 `true`.

@@ -23,5 +23,11 @@
   },
   "codeLens": {
     "enable": false
+  },
+  "hint": {
+    "enable": true,
+    "localHint": true,
+    "overrideHint": true,
+    "paramHint": false
   }
 }

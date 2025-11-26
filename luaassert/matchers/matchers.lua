@@ -12,10 +12,50 @@ local hasToString = require("luaassert.util").hasToString
 local printWithType = matcherUtils.printWithType
 local matcherErrorMessage = matcherUtils.matcherErrorMessage
 local stringFormat = string.format
+local type = type
+local tableConcat = table.concat
+
 ---@namespace Luaassert
 
 local EXPECTED_LABEL = 'Expected'; ---@readonly
 local RECEIVED_LABEL = 'Received'; ---@readonly
+
+
+--- 检查 actual 是否包含 expected 的子集
+---@param actual table
+---@param expected table
+---@return boolean
+local function isMatchObject(actual, expected)
+    for key, expectedValue in pairs(expected) do
+        local actualValue = actual[key]
+        if type(expectedValue) == "table" and type(actualValue) == "table" then
+            if not isMatchObject(actualValue, expectedValue) then
+                return false
+            end
+        else
+            if not deepCompare(actualValue, expectedValue, true) then
+                return false
+            end
+        end
+    end
+    return true
+end
+
+--- 复制 actual 中的子集用于 diff
+---@param actual table
+---@param expected table
+---@return table
+local function extractSubset(actual, expected)
+    if type(actual) ~= "table" or type(expected) ~= "table" then
+        return actual
+    end
+
+    local subset = {}
+    for key, expectedValue in pairs(expected) do
+        subset[key] = extractSubset(actual[key], expectedValue)
+    end
+    return subset
+end
 
 ---@export namespace
 ---@type MatchersObject
@@ -238,6 +278,7 @@ local matchers = {
             message = message,
         }
     end,
+    --- 断言某个值是否与所提供数组中的任何值匹配
     ---@param expected any[] 预期值数组
     toBeOneOf = function(self, expected)
         local matcherName = "toBeOneOf"
@@ -269,6 +310,311 @@ local matchers = {
                     .. "\n\n"
                     .. printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
             end,
+        }
+    end,
+    -- 检查数组或字符串是否包含目标值
+    toContain = function(self, expected)
+        local matcherName = "toContain"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+        local actual = self.actual
+
+        if actual == nil then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值不能为 nil"),
+                printWithType('Received', actual, printReceived)
+            ))
+        end
+
+        local actualType = type(actual)
+
+        if actualType == "string" then
+            if type(expected) ~= "string" then
+                error(matcherErrorMessage(
+                    matcherHint(matcherName, nil, nil, options),
+                    matcherUtils.EXPECTED_COLOR("expected") .. " " .. i18n("值必须是字符串, 当 received 为字符串时"),
+                    printWithType('Expected', expected, printExpected) .. "\n" ..
+                    printWithType('Received', actual, printReceived)
+                ))
+            end
+            local startIndex = string.find(actual, expected, 1, true)
+            local pass = startIndex ~= nil
+            local labelExpected = "Expected substring"
+            local labelReceived = "Received string"
+            local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceived)
+            local message = function()
+                local lines = {
+                    matcherHint(matcherName, nil, nil, options),
+                    "",
+                    printLabel(labelExpected) .. (options.isNot and "not " or "") .. printExpected(expected),
+                    printLabel(labelReceived) .. (options.isNot and "    " or "") .. printReceived(actual),
+                }
+                return table.concat(lines, "\n")
+            end
+
+            return {
+                passed = pass,
+                message = message,
+            }
+        end
+
+        if actualType ~= "table" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须是 table 或 string"),
+                printWithType('Received', actual, printReceived)
+            ))
+        end
+
+        local found = false
+        for _, value in ipairs(actual) do
+            if value == expected then
+                found = true
+                break
+            end
+        end
+
+        local labelExpected = "Expected value"
+        local labelReceived = "Received table"
+        local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceived)
+        local message = function()
+            local lines = {
+                matcherHint(matcherName, nil, nil, options),
+                "",
+                printLabel(labelExpected) .. (options.isNot and "not " or "") .. printExpected(expected),
+                printLabel(labelReceived) .. (options.isNot and "    " or "") .. printReceived(actual),
+            }
+            return table.concat(lines, "\n")
+        end
+
+        return {
+            passed = found,
+            message = message,
+        }
+    end,
+    -- 检查数组是否包含深度相等的元素
+    toContainEqual = function(self, expected)
+        local matcherName = "toContainEqual"
+        ---@type MatcherHintOptions
+        local options = {
+            comment = "deep equality",
+            isNot = self.isNot,
+        }
+        local actual = self.actual
+
+        if actual == nil then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值不能为 nil"),
+                printWithType('Received', actual, printReceived)
+            ))
+        end
+
+        if type(actual) ~= "table" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须是 table"),
+                printWithType('Received', actual, printReceived)
+            ))
+        end
+
+        local found = false
+        for _, value in ipairs(actual) do
+            if deepCompare(value, expected, true) then
+                found = true
+                break
+            end
+        end
+
+        local labelExpected = "Expected value"
+        local labelReceived = "Received table"
+        local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceived)
+        local message = function()
+            local lines = {
+                matcherHint(matcherName, nil, nil, options),
+                "",
+                printLabel(labelExpected) .. (options.isNot and "not " or "") .. printExpected(expected),
+                printLabel(labelReceived) .. (options.isNot and "    " or "") .. printReceived(actual),
+            }
+            return table.concat(lines, "\n")
+        end
+
+        return {
+            passed = found,
+            message = message,
+        }
+    end,
+    -- 检查对象是否匹配子集
+    toMatchObject = function(self, expected)
+        local matcherName = "toMatchObject"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+        local actual = self.actual
+
+        if type(actual) ~= "table" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值必须是 table"),
+                printWithType('Received', actual, printReceived)
+            ))
+        end
+
+        if type(expected) ~= "table" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, nil, options),
+                matcherUtils.EXPECTED_COLOR("expected") .. " " .. i18n("值必须是 table"),
+                printWithType('Expected', expected, printExpected)
+            ))
+        end
+
+        local pass = isMatchObject(actual, expected)
+        local message
+        if pass then
+            message = function()
+                local lines = {
+                    matcherHint(matcherName, nil, nil, options),
+                    "",
+                    "Expected: not " .. printExpected(expected),
+                }
+                if not deepCompare(actual, expected, true) then
+                    lines[#lines + 1] = "Received:     " .. printReceived(actual)
+                end
+                return tableConcat(lines, "\n")
+            end
+        else
+            message = function()
+                local subset = extractSubset(actual, expected)
+                return matcherHint(matcherName, nil, nil, options)
+                    .. "\n\n"
+                    .. printDiffOrStringify(expected, subset, EXPECTED_LABEL, RECEIVED_LABEL)
+            end
+        end
+
+        return {
+            passed = pass,
+            message = message,
+        }
+    end,
+    -- 检查对象是否具有指定路径, 并可选地比较路径对应的值.
+    ---@param expectedPath any[] 要检查的路径数组, 每个元素对应一个键.
+    ---@param ... any 可选的预期值, 用于比较路径对应的值. 必须要使用`...`来确定是否有预期值, select("#", ...) 如果大于0则表示有预期值, 即使这个值是 nil.
+    toHaveProperty = function(self, expectedPath, ...)
+        local matcherName = "toHaveProperty"
+        local expectedArgument = "path"
+        local argumentCount = select("#", ...)
+        local hasExpectedValue = argumentCount > 0
+        local expectedValue = hasExpectedValue and select(1, ...) or nil
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+        if hasExpectedValue then
+            options.secondArgument = "value"
+        end
+
+        local actual = self.actual
+        if actual == nil then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, expectedArgument, options),
+                matcherUtils.RECEIVED_COLOR("received") .. " " .. i18n("值不能是 nil"),
+                printWithType('Received', actual, printReceived)
+            ))
+        end
+
+        if type(expectedPath) ~= "table" then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, expectedArgument, options),
+                matcherUtils.EXPECTED_COLOR("expected") .. " " .. i18n("路径必须是 table"),
+                printWithType('Expected', expectedPath, printExpected)
+            ))
+        end
+
+        if #expectedPath == 0 then
+            error(matcherErrorMessage(
+                matcherHint(matcherName, nil, expectedArgument, options),
+                matcherUtils.EXPECTED_COLOR("expected") .. " " .. i18n("路径不能是空数组"),
+                printWithType('Expected', expectedPath, printExpected)
+            ))
+        end
+
+        local pathResult = matcherUtils.getPath(actual, expectedPath)
+        local receivedPath = pathResult.traversedPath
+        local hasCompletePath = pathResult.hasEndProp and #receivedPath == #expectedPath
+        local receivedValue = hasCompletePath and pathResult.value or pathResult.lastTraversedObject
+
+        local pass
+        if hasExpectedValue then
+            ---@cast expectedValue any
+            pass = pathResult.hasEndProp and deepCompare(pathResult.value, expectedValue, true)
+        else
+            pass = pathResult.hasEndProp and hasCompletePath
+        end
+
+        local message
+        if pass then
+            message = function()
+                local lines = {
+                    matcherHint(matcherName, nil, expectedArgument, options),
+                    "",
+                }
+                if hasExpectedValue then
+                    lines[#lines + 1] = "Expected path: " .. printExpected(expectedPath)
+                    lines[#lines + 1] = ""
+                    lines[#lines + 1] = "Expected value: not " .. printExpected(expectedValue)
+                    if not deepCompare(expectedValue, receivedValue, true) then
+                        lines[#lines + 1] = "Received value:     " .. printReceived(receivedValue)
+                    end
+                else
+                    lines[#lines + 1] = "Expected path: not " .. printExpected(expectedPath)
+                    lines[#lines + 1] = ""
+                    lines[#lines + 1] = "Received value: " .. printReceived(receivedValue)
+                end
+                return tableConcat(lines, "\n")
+            end
+        else
+            message = function()
+                local hint = matcherHint(matcherName, nil, expectedArgument, options)
+                if hasCompletePath and hasExpectedValue then
+                    return hint
+                        .. "\n\n"
+                        .. printDiffOrStringify(expectedValue, receivedValue, "Expected value", "Received value")
+                end
+
+                local lines = {
+                    hint,
+                    "",
+                    "Expected path: " .. printExpected(expectedPath),
+                }
+
+                if hasCompletePath then
+                    lines[#lines + 1] = ""
+                    if hasExpectedValue then
+                        lines[#lines + 1] = printDiffOrStringify(expectedValue, receivedValue, "Expected value",
+                            "Received value")
+                    else
+                        lines[#lines + 1] = "Received value: " .. printReceived(receivedValue)
+                    end
+                    return tableConcat(lines, "\n")
+                end
+
+                lines[#lines + 1] = "Received path: " .. printReceived(receivedPath)
+                lines[#lines + 1] = ""
+                if hasExpectedValue then
+                    lines[#lines + 1] = "Expected value: " .. printExpected(expectedValue)
+                end
+                lines[#lines + 1] = "Received value: " .. printReceived(receivedValue)
+                return tableConcat(lines, "\n")
+            end
+        end
+
+        return {
+            passed = pass,
+            message = message,
         }
     end,
     -- 检查对象是否具有指定长度

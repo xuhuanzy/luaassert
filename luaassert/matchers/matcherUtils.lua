@@ -5,6 +5,7 @@ local format = require("luaassert.utils.prettyFormat").format
 local i18n = require("luaassert.languages.i18n")
 local type = type
 local tableConcat = table.concat
+local tableInsert = table.insert
 ---@namespace Luaassert
 
 ---@export namespace
@@ -261,6 +262,55 @@ function export.printDiffOrStringify(expected, received, expectedLabel, received
     or export.printReceived(received))
 
   return expectedLine .. "\n" .. receivedLine
+end
+
+---@class MatcherUtils.PathInfo
+---@field traversedPath any[] 已遍历的路径
+---@field lastTraversedObject any 最后遍历到的对象
+---@field hasEndProp boolean 是否存在最终路径属性
+---@field value any 最终路径属性对应的值
+
+--- 获取表对象的路径信息
+---@param object any
+---@param propertyPath any[]
+---@return MatcherUtils.PathInfo
+function export.getPath(object, propertyPath)
+  if type(propertyPath) ~= "table" then
+    error(i18n("propertyPath must be table"))
+  end
+
+  local traversedPath = {}
+  local current = object
+  local lastTraversedObject = object
+  local hasEndProp = false
+  local value = nil
+
+  for index, segment in ipairs(propertyPath) do
+    if type(current) ~= "table" then
+      break
+    end
+
+    lastTraversedObject = current
+
+    local key = segment
+    current = current[key]
+    if current == nil then
+      break
+    end
+
+    traversedPath[index] = segment
+    if index == #propertyPath then
+      hasEndProp = true
+      value = current
+    end
+  end
+
+  return {
+    traversedPath = traversedPath,
+    lastTraversedObject = lastTraversedObject,
+    hasEndProp = hasEndProp,
+    value = value,
+  }
 end
 
 return export
