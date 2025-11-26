@@ -57,6 +57,50 @@ local function extractSubset(actual, expected)
     return subset
 end
 
+---@param value number
+---@return string
+local function formatNumber(value)
+    if value == math.huge then
+        return "Infinity"
+    elseif value == -math.huge then
+        return "-Infinity"
+    elseif value ~= value then
+        return "NaN"
+    end
+    return tostring(value)
+end
+
+--- 打印 toBeCloseTo 的差值信息
+---@param receivedDiff number
+---@param expectedDiff number
+---@param precision integer
+---@param isNot boolean?
+---@return string
+local function printCloseTo(receivedDiff, expectedDiff, precision, isNot)
+    local receivedDiffString = formatNumber(receivedDiff)
+
+    local expectedDiffString
+    if receivedDiffString:find("[eE]") then
+        expectedDiffString = stringFormat("%.0e", expectedDiff)
+    elseif precision >= 0 and precision < 20 then
+        expectedDiffString = stringFormat("%." .. (precision + 1) .. "f", expectedDiff)
+    else
+        expectedDiffString = formatNumber(expectedDiff)
+    end
+
+    local precisionString = formatNumber(precision)
+    local prefix = isNot and "    " or ""
+    local diffPrefix = isNot and "not " or ""
+
+    local lines = {
+        "Expected precision:  " .. prefix .. "  " .. precisionString,
+        "Expected difference: " .. diffPrefix .. "< " .. matcherUtils.EXPECTED_COLOR(expectedDiffString),
+        "Received difference: " .. prefix .. "  " .. matcherUtils.RECEIVED_COLOR(receivedDiffString),
+    }
+
+    return tableConcat(lines, "\n")
+end
+
 ---@export namespace
 ---@type MatchersObject
 local matchers = {
@@ -119,6 +163,84 @@ local matchers = {
                     "Received: " ..
                     printReceived(self.actual)
             end,
+        }
+    end,
+    -- 检查数字是否在给定精度范围内相等
+    ---@param expected number 预期值
+    ---@param precision? integer 精度, 默认值为 `2`
+    toBeCloseTo = function(self, expected, precision)
+        local matcherName = "toBeCloseTo"
+        ---@type MatcherHintOptions
+        local options = {
+            isNot = self.isNot,
+        }
+        if precision ~= nil then
+            options.secondArgument = "precision"
+            options.secondArgumentColor = function(arg)
+                return arg
+            end
+        end
+
+        ensureNumbers(self.actual, expected, matcherName, options)
+
+        local decimals ---@type integer
+        if precision == nil then
+            decimals = 2
+        else
+            if type(precision) ~= "number" or precision < 0 or precision ~= math.floor(precision) then
+                error(matcherErrorMessage(
+                    matcherHint(matcherName, nil, nil, options),
+                    matcherUtils.EXPECTED_COLOR("expected") .. " " .. i18n("精度必须是非负整数"),
+                    printWithType("precision", precision, printExpected)
+                ))
+            end
+            decimals = precision
+        end
+
+        local actual = self.actual
+        local pass = false
+        local expectedDiff = 0 ---@type number
+        local receivedDiff = 0 ---@type number
+
+        if actual == math.huge and expected == math.huge then
+            pass = true
+        elseif actual == -math.huge and expected == -math.huge then
+            pass = true
+        else
+            expectedDiff = 0.5 * 10 ^ (-decimals)
+            receivedDiff = math.abs(expected - actual)
+            pass = receivedDiff < expectedDiff
+        end
+
+        local message
+        if pass then
+            message = function()
+                local lines = {
+                    matcherHint(matcherName, nil, nil, options),
+                    "",
+                    "Expected: not " .. printExpected(expected),
+                }
+                if receivedDiff ~= 0 then
+                    lines[#lines + 1] = "Received:     " .. printReceived(actual)
+                    lines[#lines + 1] = ""
+                    lines[#lines + 1] = printCloseTo(receivedDiff, expectedDiff, decimals, options.isNot)
+                end
+                return tableConcat(lines, "\n")
+            end
+        else
+            message = function()
+                return matcherHint(matcherName, nil, nil, options)
+                    .. "\n\n"
+                    .. "Expected: " .. printExpected(expected) .. "\n"
+                    .. "Received: " .. printReceived(actual) .. "\n"
+                    .. "\n"
+                    .. printCloseTo(receivedDiff, expectedDiff, decimals, options.isNot)
+            end
+        end
+
+        return {
+            passed = pass,
+            message = message,
         }
     end,
     -- 深度比较实际值与预期值是否相等

@@ -45,6 +45,7 @@
 ---@field toBe fun(self: self, expected: any) 断言实际值与预期值是否相等(a == b). 如需深度比较, 请使用 {@link Luaassert.Matchers.toEqual}.
 ---@field toBeTypeOf fun(self: self, expected: "nil"|"number"|"string"|"boolean"|"table"|"function"|"thread"|"userdata") 断言实际值是否属于接收类型
 ---@field toBeInteger fun(self: self) 实际值是否为整数
+---@field toBeCloseTo fun(self: self, expected: number, precision?: integer) 断言两个数字在给定精度范围内近似相等. 精度默认值为 `2`.
 ---@field toBeGreaterThan fun(self: self, expected: number) 实际值是否大于预期值
 ---@field toBeGreaterThanOrEqual fun(self: self, expected: number) 实际值是否大于或等于预期值
 ---@field toBeLessThan fun(self: self, expected: number) 实际值是否小于预期值
