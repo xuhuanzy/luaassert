@@ -9,6 +9,7 @@ local ensureNoExpected = matcherUtils.ensureNoExpected
 local ensureNumbers = matcherUtils.ensureNumbers
 local ensureExpectedIsNonNegativeInteger = matcherUtils.ensureExpectedIsNonNegativeInteger
 local hasToString = require("luaassert.util").hasToString
+local getLabelPrinter = matcherUtils.getLabelPrinter
 local printWithType = matcherUtils.printWithType
 local matcherErrorMessage = matcherUtils.matcherErrorMessage
 local stringFormat = string.format
@@ -466,7 +467,7 @@ local matchers = {
             local pass = startIndex ~= nil
             local labelExpected = "Expected substring"
             local labelReceived = "Received string"
-            local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceived)
+            local printLabel = getLabelPrinter(labelExpected, labelReceived)
             local message = function()
                 local lines = {
                     matcherHint(matcherName, nil, nil, options),
@@ -501,7 +502,7 @@ local matchers = {
 
         local labelExpected = "Expected value"
         local labelReceived = "Received table"
-        local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceived)
+        local printLabel = getLabelPrinter(labelExpected, labelReceived)
         local message = function()
             local lines = {
                 matcherHint(matcherName, nil, nil, options),
@@ -553,7 +554,7 @@ local matchers = {
 
         local labelExpected = "Expected value"
         local labelReceived = "Received table"
-        local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceived)
+        local printLabel = getLabelPrinter(labelExpected, labelReceived)
         local message = function()
             local lines = {
                 matcherHint(matcherName, nil, nil, options),
@@ -785,7 +786,7 @@ local matchers = {
             local labelExpected = "Expected length"
             local labelReceivedLength = "Received length"
             local labelReceivedValue = stringFormat("Received %s", actualType)
-            local printLabel = matcherUtils.getLabelPrinter(labelExpected, labelReceivedLength, labelReceivedValue)
+            local printLabel = getLabelPrinter(labelExpected, labelReceivedLength, labelReceivedValue)
             local expectedLine = printLabel(labelExpected) .. (options.isNot and "not " or "") .. printExpected(expected)
             local lines = {
                 matcherHint(matcherName, nil, nil, options),
@@ -797,7 +798,7 @@ local matchers = {
             end
             lines[#lines + 1] = printLabel(labelReceivedValue)
                 .. (options.isNot and "    " or "") .. printReceived(self.actual)
-            return table.concat(lines, "\n")
+            return tableConcat(lines, "\n")
         end
 
         return {

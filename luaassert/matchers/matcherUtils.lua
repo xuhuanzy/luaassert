@@ -219,7 +219,7 @@ function export.getLabelPrinter(...)
   return function(inputString)
     local padding = maxLength - #inputString
     local spaces = string.rep(' ', padding)
-    return string.format('%s: %s', inputString, spaces)
+    return stringFormat('%s: %s', inputString, spaces)
   end
 end
 
