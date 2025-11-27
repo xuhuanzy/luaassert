@@ -1,7 +1,7 @@
 local colored = require('luaassert.utils.colored')
 local stringFormat = string.format
 local diff = require("luaassert.utils.diff").diff
-local format = require("luaassert.utils.prettyFormat").format
+local prettyFormat = require("luaassert.utils.prettyFormat").format
 local i18n = require("luaassert.languages.i18n")
 local type = type
 local tableConcat = table.concat
@@ -35,14 +35,6 @@ function export.matcherErrorMessage(hint, genericMessage, specificMessage)
   end
   return message
 end
-
----@class MatcherHintOptions
----@field comment string? 注释
----@field isNot boolean? 是否取反
----@field secondArgument string? 第二个参数
----@field expectedColor? fun(arg: string): string 预期值颜色
----@field receivedColor? fun(arg: string): string? 实际值颜色
----@field secondArgumentColor? fun(arg: string): string?? 第二个参数颜色
 
 --- 生成匹配器提示
 ---@param matcherName string 匹配器名称
@@ -112,11 +104,12 @@ end
 ---@param maxWidth number? 最大宽度
 ---@return string @字符串化后的对象
 local function stringify(object, maxDepth, maxWidth)
-  return format(object, {
+  return prettyFormat(object, {
     maxDepth = 10,
     maxWidth = 10,
   })
 end
+export.stringify = stringify
 
 -- 将值压缩成单行文本，表使用紧凑花括号，并携带深度/宽度/长度限制以避免爆长
 ---@param value any
@@ -124,7 +117,7 @@ end
 ---@param maxWidth? integer
 ---@return string
 local function stringifyInline(value, maxDepth, maxWidth)
-  return format(value, {
+  return prettyFormat(value, {
     maxDepth = maxDepth or 10,
     maxWidth = maxWidth or 10,
   })

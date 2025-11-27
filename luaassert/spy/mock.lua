@@ -47,25 +47,23 @@ local REGISTERED_MOCKS = setmetatable({}, { __mode = "k" })
 ---@type table<Mock, MockConfig>  @mock 实例与配置的映射表
 local MOCK_CONFIGS = setmetatable({}, { __mode = "k" })
 
---- 占位符, 用于表示未捕获实例.
-local nilInstance = {} ---@readonly
-
 ---@class Mock<T>
 ---@field package state MockContext
 ---@field package config MockConfig
 ---@field mock MockContext<T>
----@field package _isMockFunction true
 ---@field private name string
 ---@field private captureInstance? fun(...: any): any @实例捕获函数, 默认捕获第一个参数为实例.
 ---@field private restoreConfig MockRestoreConfig @还原配置
 ---@overload fun(...: MockParameters<T>...): MockReturnType<T>
 local Mock = {}
+---@package
 Mock.__index = Mock
 
 ---触发 mock 时记录参数, 上下文, 执行结果
 ---@param self Mock
 ---@param ... any 调用参数
 ---@return any @执行结果
+---@package
 Mock.__call = function(self, ...)
     local args = { ... }
     local state = self.state
@@ -74,8 +72,8 @@ Mock.__call = function(self, ...)
     state.lastCall = args
     state.invocationCallOrder[#state.invocationCallOrder + 1] = nextInvocationCallCounter()
 
-    -- 我们需要确保上下文并不是`nil`避免破坏数组索引
-    local context = nilInstance
+    -- 上下文为`nil`时会破坏数组索引, 因此使用占位符`false`.
+    local context = false
     if self.captureInstance then
         context = self.captureInstance(...)
     end
@@ -236,8 +234,7 @@ local function isMockFunction(fn)
     if type(fn) ~= "table" then
         return false
     end
-    --[[@cast fn Mock]]
-    return fn._isMockFunction == true
+    return getmetatable(fn) == Mock
 end
 
 --- 创建监视程序.
@@ -307,6 +304,7 @@ local function resetAllMocks()
     end
 end
 
+---@export namespace
 return {
     fn = fn,
     spy = fn,

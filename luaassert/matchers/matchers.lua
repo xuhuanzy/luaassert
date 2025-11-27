@@ -126,7 +126,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -139,7 +139,7 @@ local matchers = {
         }
         local actualType = type(self.actual)
         return {
-            passed = actualType == expected,
+            pass = actualType == expected,
             message = function()
                 return matcherHint(matcherName, nil, nil, options) ..
                     "\n\n" ..
@@ -157,7 +157,7 @@ local matchers = {
         ensureNoExpected(expected, matcherName, options)
         local pass = type(self.actual) == "number" and math.type(self.actual) == "integer"
         return {
-            passed = pass,
+            pass = pass,
             message = function()
                 return matcherHint(matcherName, nil, '', options) ..
                     "\n\n" ..
@@ -240,7 +240,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -263,7 +263,7 @@ local matchers = {
                 printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
         end
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -279,7 +279,7 @@ local matchers = {
 
         local pass = not self.actual
         return {
-            passed = pass,
+            pass = pass,
             message = function()
                 return matcherHint(matcherName, nil, '', options) ..
                     "\n\n" ..
@@ -299,7 +299,7 @@ local matchers = {
 
         local pass = not not self.actual
         return {
-            passed = pass,
+            pass = pass,
             message = function()
                 return matcherHint(matcherName, nil, '', options)
                     .. "\n\n"
@@ -349,7 +349,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -397,7 +397,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -427,7 +427,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = function()
                 return matcherHint(matcherName, nil, nil, options)
                     .. "\n\n"
@@ -479,7 +479,7 @@ local matchers = {
             end
 
             return {
-                passed = pass,
+                pass = pass,
                 message = message,
             }
         end
@@ -514,7 +514,7 @@ local matchers = {
         end
 
         return {
-            passed = found,
+            pass = found,
             message = message,
         }
     end,
@@ -566,7 +566,7 @@ local matchers = {
         end
 
         return {
-            passed = found,
+            pass = found,
             message = message,
         }
     end,
@@ -619,7 +619,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -736,7 +736,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -802,7 +802,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -830,7 +830,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -858,7 +858,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -886,7 +886,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,
@@ -914,7 +914,7 @@ local matchers = {
         end
 
         return {
-            passed = pass,
+            pass = pass,
             message = message,
         }
     end,

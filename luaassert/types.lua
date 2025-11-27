@@ -22,7 +22,7 @@
 ---@field isNot boolean 是否取反
 
 ---@class ExpectationResult
----@field passed boolean 是否通过断言
+---@field pass boolean 是否通过断言
 ---@field message? fun(): string 断言失败消息
 
 ---@alias MatcherFunctionWithContext fun(self: MatcherContext, actual: any, ...: any): ExpectationResult
@@ -61,7 +61,7 @@
 ---@field toMatch fun(self: self, expected: string, plain?: boolean) 断言字符串是否与指定模式匹配. 当 `plain` 为 `true` 时, 按字符串查找, 允许仅匹配子串.
 ---@field toThrowError fun(self: self, expected?: any) 函数执行时是否抛出指定错误消息
 ---@field toHaveLength fun(self: self, expected: integer, useN?: boolean) 字符串或表是否具有指定长度. 当 `useN` 为 `true` 时会使用 `n` 字段表示长度, 默认值为 `true`.
-
+---@field toHaveBeenCalled fun(self: self) 断言函数是否被调用过
 
 --- 非对称匹配器
 ---@class AsymmetricMatcher

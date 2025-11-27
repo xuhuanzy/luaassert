@@ -9,7 +9,7 @@ local deepCopy = require("luaassert.util").deepCopy
 ---@param context MatcherContext
 ---@param result ExpectationResult
 local function processResult(context, result)
-    if (result.passed and context.isNot) or (not result.passed and not context.isNot) then
+    if (result.pass and context.isNot) or (not result.pass and not context.isNot) then
         local message = result.message and result.message() or matcherUtils.RECEIVED_COLOR(i18n("没有为此匹配器指定消息。"))
         error(message, errorLevel())
     end
@@ -48,11 +48,13 @@ Assertion.__index = function(self, key)
     end
 end
 
+---@package
 --- 重置部分状态以复用断言对象
 function Assertion:resetState()
     self.context.isNot = false
 end
 
+---@package
 ---@param actual any
 ---@return Assertion
 function Assertion.new(actual)

@@ -1,3 +1,5 @@
+---@namespace Luaassert
+
 local mock = require("luaassert.spy.mock")
 
 local spy = {}
