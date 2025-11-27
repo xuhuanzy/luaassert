@@ -1,5 +1,4 @@
-local luaassert = require("luaassert")
-local expect = luaassert.expect
+local expect = require("luaassert").expect
 
 -- #region toBe
 do

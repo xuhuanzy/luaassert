@@ -5,7 +5,9 @@ local setMatchers = require("luaassert.matchers").setMatchers
 local matchers = require("luaassert.matchers.matchers")
 local mock = require("luaassert.spy.mock")
 
+--- 设置内部匹配器
 setMatchers(matchers, true)
+
 local Api = {
     expect = expect,
     mock = mock,
