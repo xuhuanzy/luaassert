@@ -80,3 +80,10 @@
 ---@field objectContaining fun(sample: {[string]: any}): AsymmetricMatcher
 ---@field stringContaining fun(sample: string): AsymmetricMatcher
 ---@field stringMatching fun(sample: string): AsymmetricMatcher
+
+---@class AssertionError
+---@field message string 错误消息
+---@field ssf? function 起始栈函数
+---@field actual any 实际值
+---@field expected any 预期值
+---@field showDiff boolean 是否显示差异

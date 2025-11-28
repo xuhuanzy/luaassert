@@ -1,4 +1,4 @@
-local emptyFunction = require("luaassert.util").emptyFunction
+local NOOP = require("luaassert.util").NOOP 
 local i18n = require("luaassert.languages.i18n")
 
 local type = type
@@ -82,7 +82,7 @@ Mock.__call = function(self, ...)
     local implementation = tableRemove(config.onceMockImplementations, 1)
         or config.mockImplementation
         or config.mockOriginal
-        or emptyFunction
+        or NOOP
     ---@cast implementation function
     local ok, result = pcall(implementation, ...)
     state.results[#state.results + 1] = {
