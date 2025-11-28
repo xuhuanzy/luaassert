@@ -4,7 +4,28 @@ local flag = require("luaassert.util").flag
 local test = require("luaassert.util").test
 local getMessage = require("luaassert.util").getMessage
 local addMethod = require("luaassert.util").addMethod
+local printDiffOrStringify = require("luaassert.utils.diff").printDiffOrStringify
+local tableConcat = table.concat
 ---@namespace Luaassert
+
+
+--- 处理断言结果
+---@param err AssertionError
+---@param diffOptions? DiffOptions
+local function processError(err, diffOptions)
+    if not (config.throwString and err.showDiff) then
+        error(err)
+    end
+    -- 此时我们需要将其处理为字符串形式以显示差异
+    local diff = printDiffOrStringify(err.actual, err.expected, diffOptions)
+    local msg = {
+        "\n",
+        err.message,
+        "\n\n",
+        diff,
+    }
+    error(tableConcat(msg))
+end
 
 ---@class AssertionStatic
 ---@field _obj any 目标对象
@@ -70,7 +91,7 @@ function Assertion:assert(expr, msg, negateMsg, expected, actual, showDiff)
             expected = expected,
             showDiff = showDiff,
         }
-        error(error_msg)
+        processError(error_msg)
     end
 end
 
@@ -79,13 +100,13 @@ do
         local actual = self._obj
         local pass = actual == expected
         self:assert(pass,
-            "expected #{this} to be #{exp} // a == b",
-            'expected #{this} not to be #{exp} // a == b',
+            "expected #{this} to be #{exp} -- a == b",
+            'expected #{this} not to be #{exp} -- a == b',
             expected,
             actual
         )
     end)
-    Assertion.new(9, "9 不是 10"):toBe(10)
+    Assertion.new(10).not_:toBe(10)
 end
 
 return Assertion

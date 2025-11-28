@@ -2,13 +2,13 @@ local i18n = require("luaassert.languages.i18n")
 local matcherUtils = require("luaassert.matchers.matcherUtils")
 local matcherHint = matcherUtils.matcherHint
 local deepCompare = require("luaassert.util").deepCompare
-local printDiffOrStringify = matcherUtils.printDiffOrStringify
 local printExpected = matcherUtils.printExpected
 local printReceived = matcherUtils.printReceived
 local ensureNoExpected = matcherUtils.ensureNoExpected
 local ensureNumbers = matcherUtils.ensureNumbers
 local ensureExpectedIsNonNegativeInteger = matcherUtils.ensureExpectedIsNonNegativeInteger
 local hasToString = require("luaassert.util").hasToString
+local printDiffOrStringify = require("luaassert.utils.diff").printDiffOrStringify
 local getLabelPrinter = matcherUtils.getLabelPrinter
 local printWithType = matcherUtils.printWithType
 local matcherErrorMessage = matcherUtils.matcherErrorMessage
@@ -122,7 +122,7 @@ local matchers = {
         end or function()
             return matcherHint(matcherName, nil, nil, options)
                 .. "\n\n" ..
-                printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
+                printDiffOrStringify(self.actual, expected)
         end
 
         return {
@@ -143,7 +143,7 @@ local matchers = {
             message = function()
                 return matcherHint(matcherName, nil, nil, options) ..
                     "\n\n" ..
-                    printDiffOrStringify(expected, actualType, EXPECTED_LABEL, RECEIVED_LABEL)
+                    printDiffOrStringify(actualType, expected)
             end,
         }
     end,
@@ -260,7 +260,7 @@ local matchers = {
         end or function()
             return matcherHint(matcherName, nil, nil, options)
                 .. "\n\n" ..
-                printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
+                printDiffOrStringify(self.actual, expected)
         end
         return {
             pass = pass,
@@ -345,7 +345,10 @@ local matchers = {
         local message = function()
             return matcherHint(matcherName, nil, nil, options)
                 .. "\n\n" ..
-                printDiffOrStringify(expected, error_message, "Expected message", "Received message")
+                printDiffOrStringify(error_message, expected, {
+                    aAnnotation = "Expected message",
+                    bAnnotation = "Received message",
+                })
         end
 
         return {
@@ -431,7 +434,7 @@ local matchers = {
             message = function()
                 return matcherHint(matcherName, nil, nil, options)
                     .. "\n\n"
-                    .. printDiffOrStringify(expected, self.actual, EXPECTED_LABEL, RECEIVED_LABEL)
+                    .. printDiffOrStringify(self.actual, expected)
             end,
         }
     end,
@@ -614,7 +617,7 @@ local matchers = {
                 local subset = extractSubset(actual, expected)
                 return matcherHint(matcherName, nil, nil, options)
                     .. "\n\n"
-                    .. printDiffOrStringify(expected, subset, EXPECTED_LABEL, RECEIVED_LABEL)
+                    .. printDiffOrStringify(subset, expected)
             end
         end
 
@@ -705,7 +708,10 @@ local matchers = {
                 if hasCompletePath and hasExpectedValue then
                     return hint
                         .. "\n\n"
-                        .. printDiffOrStringify(expectedValue, receivedValue, "Expected value", "Received value")
+                        .. printDiffOrStringify(receivedValue, expectedValue, {
+                            aAnnotation = "Expected value",
+                            bAnnotation = "Received value",
+                        })
                 end
 
                 local lines = {
@@ -717,8 +723,10 @@ local matchers = {
                 if hasCompletePath then
                     lines[#lines + 1] = ""
                     if hasExpectedValue then
-                        lines[#lines + 1] = printDiffOrStringify(expectedValue, receivedValue, "Expected value",
-                            "Received value")
+                        lines[#lines + 1] = printDiffOrStringify(receivedValue, expectedValue, {
+                            aAnnotation = "Expected value",
+                            bAnnotation = "Received value",
+                        })
                     else
                         lines[#lines + 1] = "Received value: " .. printReceived(receivedValue)
                     end
@@ -902,9 +910,9 @@ local matchers = {
 
         local pass = self.actual <= expected
         local message = function()
-            local expectedLine = string.format("Expected:%s <= %s", options.isNot and " not" or "",
+            local expectedLine = stringFormat("Expected:%s <= %s", options.isNot and " not" or "",
                 printExpected(expected))
-            local receivedLine = string.format("Received:%s    %s", options.isNot and "    " or "",
+            local receivedLine = stringFormat("Received:%s    %s", options.isNot and "    " or "",
                 printReceived(self.actual))
             return matcherHint(matcherName, nil, nil, options)
                 .. "\n\n"

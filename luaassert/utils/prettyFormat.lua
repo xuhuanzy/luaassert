@@ -7,6 +7,8 @@ local tableSort = table.sort
 local tableConcat = table.concat
 local mathMin = math.min
 
+---@namespace Luaassert
+
 ---@export
 local export = {}
 
@@ -93,9 +95,6 @@ local function formatValue(value, options, seen, depth)
     return tostring(value)
 end
 
----@class PrettyFormatOptions
----@field maxDepth integer
----@field maxWidth integer
 
 --- 将任意值转换为紧凑的单行字符串
 ---@param value any

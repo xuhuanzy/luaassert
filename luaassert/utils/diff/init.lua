@@ -4,6 +4,11 @@ local stringFormat = string.format
 local deepCompare = require("luaassert.util").deepCompare
 local colored = require('luaassert.utils.colored')
 local i18n = require("luaassert.languages.i18n")
+local normalizeDiffOptions = require("luaassert.utils.diff.normalizeDiffOptions")
+local getLabelPrinter = require("luaassert.matchers.matcherUtils").getLabelPrinter
+local printExpected = require("luaassert.matchers.matcherUtils").printExpected
+local printReceived = require("luaassert.matchers.matcherUtils").printReceived
+local prettyFormat = require("luaassert.utils.prettyFormat").format
 local tostring = tostring
 local type = type
 local tableInsert = table.insert
@@ -17,13 +22,11 @@ local EXPECTED_COLOR = colored.green
 local RECEIVED_COLOR = colored.red
 local DIM_COLOR = colored.dim
 
+local MAX_DIFF_STRING_LENGTH = 20000 ---@readonly 最大差异字符串长度
+
 ---@export
 local export = {}
 
----@class DiffOptions
----@field aAnnotation? string 期望值标签
----@field bAnnotation? string 接收值标签
----@field includeChangeCounts? boolean 是否包含变更计数
 
 --- 渲染差异行
 ---@param marker string|nil -- "+" / "-" / nil
@@ -240,6 +243,40 @@ function export.diff(a, b, options)
     end
 
     return tableConcat(lines, "\n")
+end
+
+--- 打印差异或字符串化
+---@param received any 实际接受值
+---@param expected any 期望值
+---@param options? DiffOptions 差异选项
+---@return string
+function export.printDiffOrStringify(received, expected, options)
+    options = normalizeDiffOptions(options)
+    -- TODO: 对于均为字符串的情况, 我们需要区分出两个字符串的具体差异
+
+    -- 只要有一侧不是表, 则不需要详尽的差异展示
+    if not (type(expected) == "table") or not (type(received) == "table") then
+        local printLabel = getLabelPrinter(options.aAnnotation, options.bAnnotation)
+        local expectedLine = printLabel(options.aAnnotation) .. printExpected(expected)
+        local receivedLine = printLabel(options.bAnnotation) .. printReceived(received)
+        return expectedLine .. "\n" .. receivedLine
+    end
+
+    local difference = export.diff(expected, received)
+
+    if difference and difference:find("- " .. options.aAnnotation, 1, true) and difference:find("+ " .. options.bAnnotation, 1, true) then
+        return difference
+    end
+
+    local printLabel = export.getLabelPrinter(options.aAnnotation, options.bAnnotation)
+
+
+    local expectedLine = printLabel(options.aAnnotation) .. export.printExpected(expected)
+    local receivedLine = printLabel(options.bAnnotation) .. (prettyFormat(expected) == prettyFormat(received)
+        and i18n("序列化为相同字符串")
+        or export.printReceived(received))
+
+    return expectedLine .. "\n" .. receivedLine
 end
 
 return export

@@ -1,6 +1,5 @@
 local colored = require('luaassert.utils.colored')
 local stringFormat = string.format
-local diff = require("luaassert.utils.diff").diff
 local prettyFormat = require("luaassert.utils.prettyFormat").format
 local i18n = require("luaassert.languages.i18n")
 local type = type
@@ -216,46 +215,6 @@ function export.getLabelPrinter(...)
   end
 end
 
---- 打印差异或字符串化
----@param expected any 期望值
----@param received any 接收值
----@param expectedLabel string 期望值标签
----@param receivedLabel string 接收值标签
----@return string
-function export.printDiffOrStringify(expected, received, expectedLabel, receivedLabel)
-  local expectedIsTable = type(expected) == "table"
-  local receivedIsTable = type(received) == "table"
-  expectedLabel = expectedLabel or "Expected"
-  receivedLabel = receivedLabel or "Received"
-
-  -- 只要有一侧不是表则直接单行展示
-  if not expectedIsTable or not receivedIsTable then
-    local simpleLines = {
-      EXPECTED_COLOR(stringFormat("%s: %s", expectedLabel, stringifyInline(expected))),
-      RECEIVED_COLOR(stringFormat("%s: %s", receivedLabel, stringifyInline(received))),
-    }
-    return tableConcat(simpleLines, "\n")
-  end
-
-  local difference = diff(expected, received, {
-    aAnnotation = expectedLabel,
-    bAnnotation = receivedLabel,
-    includeChangeCounts = true,
-  })
-
-  if difference and difference:find("- " .. expectedLabel, 1, true) and difference:find("+ " .. receivedLabel, 1, true) then
-    return difference
-  end
-
-  local printLabel = export.getLabelPrinter(expectedLabel, receivedLabel)
-
-  local expectedLine = printLabel(expectedLabel) .. export.printExpected(expected)
-  local receivedLine = printLabel(receivedLabel) .. (stringify(expected) == stringify(received)
-    and i18n("序列化为相同字符串")
-    or export.printReceived(received))
-
-  return expectedLine .. "\n" .. receivedLine
-end
 
 ---@class MatcherUtils.PathInfo
 ---@field traversedPath any[] 已遍历的路径

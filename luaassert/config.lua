@@ -18,6 +18,10 @@ local config = {
     ---@type fun(a: any, b: any): boolean
     ---@diagnostic disable-next-line: assign-type-mismatch
     deepEqual = nil,
+
+    --- 异常抛出字符串而不是表. 如果`showDiff`被启用会打印差异.
+    ---@type boolean
+    throwString = true,
 }
 
 
