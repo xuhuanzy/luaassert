@@ -251,6 +251,10 @@ end
 ---@param options? DiffOptions 差异选项
 ---@return string
 function export.printDiffOrStringify(received, expected, options)
+    -- 如果两个值相等, 则无需展示差异
+    if expected == received then
+        return ""
+    end
     options = normalizeDiffOptions(options)
     -- TODO: 对于均为字符串的情况, 我们需要区分出两个字符串的具体差异
 

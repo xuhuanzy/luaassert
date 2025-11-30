@@ -176,7 +176,12 @@ end
 util.objDisplay = objDisplay
 
 --- 内部使用的标志位键
----@alias InternalFlagKey "ssfi" | "message" | "eql" | "negate"
+---@alias InternalFlagKey
+---| "ssfi" 起始栈帧
+---| "message" 自定义错误消息, 将会附加到断言错误头部
+---| "eql" 相等函数
+---| "negate" 取反标记
+---| "__name" 断言方法名
 
 --- 设置或获取对象的标志位.
 ---
@@ -213,7 +218,7 @@ end
 ---@param expr any
 ---@return any
 function util.test(obj, expr)
-    local negate = flag(obj, 'negate')
+    local negate = flag(obj, 'negate') ---@type boolean?
     if negate then
         return not expr
     end

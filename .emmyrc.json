@@ -28,7 +28,7 @@
     "enable": true,
     "localHint": true,
     "overrideHint": true,
-    "paramHint": false
+    "paramHint": true
   },
   "documentColor": {
     "enable": false

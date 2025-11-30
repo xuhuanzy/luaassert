@@ -478,7 +478,7 @@ local matchers = {
                     printLabel(labelExpected) .. (options.isNot and "not " or "") .. printExpected(expected),
                     printLabel(labelReceived) .. (options.isNot and "    " or "") .. printReceived(actual),
                 }
-                return table.concat(lines, "\n")
+                return tableConcat(lines, "\n")
             end
 
             return {

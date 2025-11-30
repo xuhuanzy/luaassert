@@ -5,6 +5,8 @@ local test = require("luaassert.util").test
 local getMessage = require("luaassert.util").getMessage
 local addMethod = require("luaassert.util").addMethod
 local printDiffOrStringify = require("luaassert.utils.diff").printDiffOrStringify
+local matcherHint = require("luaassert.matchers.matcherUtils").matcherHint
+local printExpected = require("luaassert.matchers.matcherUtils").printExpected
 local tableConcat = table.concat
 ---@namespace Luaassert
 
@@ -13,15 +15,18 @@ local tableConcat = table.concat
 ---@param err AssertionError
 ---@param diffOptions? DiffOptions
 local function processError(err, diffOptions)
-    if not (config.throwString and err.showDiff) then
+    if not config.throwString then
         error(err)
     end
-    -- 此时我们需要将其处理为字符串形式以显示差异
-    local diff = printDiffOrStringify(err.actual, err.expected, diffOptions)
+    -- 此时我们需要将其处理为字符串形式
+    local diff = ""
+    if err.showDiff then
+        diff = printDiffOrStringify(err.actual, err.expected, diffOptions)
+    end
     local msg = {
         "\n",
         err.message,
-        "\n\n",
+        diff ~= "" and "\n\n" or "",
         diff,
     }
     error(tableConcat(msg))
@@ -37,6 +42,7 @@ Assertion.__index = function(self, key)
         flag(self, "negate", true)
         return self
     end
+    flag(self, "__name", key)
     return rawget(Assertion, key)
 end
 
@@ -48,11 +54,12 @@ function Assertion.new(obj, msg, ssfi)
     ---@type AssertionStatic
     local self = setmetatable({
         _obj = obj,
+        __flags = {
+            ssfi = ssfi or Assertion,
+            message = msg,
+            eql = config.deepEqual or util.deepCompare,
+        },
     }, Assertion)
-
-    flag(self, "ssfi", ssfi or Assertion)
-    flag(self, "message", msg)
-    flag(self, "eql", config.deepEqual or util.deepCompare)
 
     return self
 end
@@ -99,14 +106,26 @@ do
     Assertion.addMethod("toBe", function(self, expected)
         local actual = self._obj
         local pass = actual == expected
-        self:assert(pass,
-            "expected #{this} to be #{exp} -- a == b",
-            'expected #{this} not to be #{exp} -- a == b',
+        local message = pass and function()
+            return matcherHint("toBe", nil, nil, {
+                    isNot = flag(self, "negate"),
+                }) ..
+                "\n\n" ..
+                "Expected: not " .. printExpected(expected)
+        end or function()
+            return matcherHint("toBe", nil, nil, {
+                isNot = flag(self, "negate"),
+            })
+        end
+        self:assert(
+            pass,
+            message,
+            message,
             expected,
             actual
         )
     end)
-    Assertion.new(10).not_:toBe(10)
+    Assertion.new(10):toBe(11)
 end
 
 return Assertion
