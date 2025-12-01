@@ -1,16 +1,9 @@
 ---@namespace Luaassert
 
 local type = type
-local tostring = tostring
-local pcall = pcall
 local debugGetmetatable = debug.getmetatable
 local debugSetmetatable = debug.setmetatable
 local next = next
-local stringSub = string.sub
-local stringLen = string.len
-local stringFormat = string.format
-local config = require("luaassert.config")
-local prettyFormat = require("luaassert.utils.prettyFormat").format
 ---@diagnostic disable-next-line: access-invisible
 local _unpack = table.unpack or unpack
 local unpack = function(t, i, j) return _unpack(t, i or 1, j or t.n or #t) end
@@ -130,58 +123,12 @@ function util.hasToString(object)
     return type(object) == "string" or type(rawget(debugGetmetatable(object) or {}, "__tostring")) == "function"
 end
 
---- 根据配置截断字符串
----@param value string
----@return string
-local function truncate(value)
-    local threshold = config.truncateThreshold
-    if type(threshold) == "number" and threshold > 0 and stringLen(value) > threshold then
-        return stringSub(value, 1, threshold) .. "..."
-    end
-    return value
-end
-
---- 将任意对象转换为适合断言消息的字符串
----@param value any
----@return string
-local function objDisplay(value)
-    local valueType = type(value)
-    if valueType == "nil" then
-        return "nil"
-    end
-    if valueType == "string" then
-        return truncate(stringFormat("%q", value))
-    end
-    if valueType == "number" or valueType == "boolean" then
-        return truncate(tostring(value))
-    end
-
-    if util.hasToString(value) then
-        local ok, str = pcall(tostring, value)
-        if ok and str then
-            return truncate(str)
-        end
-    end
-
-    local ok, formatted = pcall(prettyFormat, value, {
-        maxDepth = 2,
-        maxWidth = 10,
-    })
-    if ok and formatted then
-        return truncate(formatted)
-    end
-
-    return truncate(tostring(value))
-end
-util.objDisplay = objDisplay
-
 --- 内部使用的标志位键
 ---@alias InternalFlagKey
 ---| "ssfi" 起始栈帧
 ---| "message" 自定义错误消息, 将会附加到断言错误头部
 ---| "eql" 相等函数
 ---| "negate" 取反标记
----| "__name" 断言方法名
 
 --- 设置或获取对象的标志位.
 ---
@@ -211,48 +158,6 @@ util.flag = flag
 ---@param fn function 方法实现
 function util.addMethod(ctx, name, fn)
     ctx[name] = fn
-end
-
---- 测试一个对象是否满足表达式.
----@param obj any
----@param expr any
----@return any
-function util.test(obj, expr)
-    local negate = flag(obj, 'negate') ---@type boolean?
-    if negate then
-        return not expr
-    end
-    return expr
-end
-
---- 构建断言错误消息
----@param obj AssertionStatic 构造的断言对象
----@param msg string|(fun(): string) 错误消息
----@param negateMsg string|(fun(): string) 取反错误消息
----@param expected any? 预期值
----@param actual any? 实际值
----@return string
-function util.getMessage(obj, msg, negateMsg, expected, actual)
-    local negate = flag(obj, 'negate')
-    local val = obj._obj
-    actual = actual or val
-    msg = negate and negateMsg or msg
-    local flagMsg = flag(obj, 'message')
-
-    if type(msg) == "function" then
-        msg = msg()
-    end
-    msg = msg or ""
-
-    msg = msg
-        :gsub("#%{this%}", objDisplay(val))
-        :gsub("#%{act%}", objDisplay(actual))
-        :gsub("#%{exp%}", objDisplay(expected))
-
-    if flagMsg then
-        return flagMsg .. ": " .. msg
-    end
-    return msg
 end
 
 return util

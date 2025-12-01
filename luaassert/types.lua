@@ -24,6 +24,8 @@
 ---@class ExpectationResult
 ---@field pass boolean 是否通过断言
 ---@field message? fun(): string 断言失败消息
+---@field actual? any 实际值
+---@field expected? any 预期值
 
 ---@alias MatcherFunctionWithContext fun(self: MatcherContext, actual: any, ...: any): ExpectationResult
 
@@ -33,6 +35,7 @@
 ---@field message string
 
 ---@class MatcherState
+---@field isNot boolean 是否取反断言
 ---@field assertionCalls integer 断言调用次数
 ---@field expectedAssertionsNumber? integer 预期断言数
 ---@field isExpectingAssertions boolean 是否正在期待断言
