@@ -61,6 +61,10 @@
 ---@field toThrowError fun(self: self, expected?: any) 函数执行时是否抛出指定错误消息
 ---@field toHaveLength fun(self: self, expected: integer, useN?: boolean) 字符串或表是否具有指定长度. 当 `useN` 为 `true` 时会使用 `n` 字段表示长度, 默认值为 `true`.
 ---@field toHaveBeenCalled fun(self: self) 断言函数是否被调用过
+---@field toHaveBeenCalledTimes fun(self: self, expected: integer) 断言函数被调用的次数
+---@field toHaveBeenCalledWith fun(self: self, ...: any) 断言函数是否被调用过, 并使用指定参数调用. 支持部分参数匹配.
+
+
 
 --- 非对称匹配器
 ---@class AsymmetricMatcher
