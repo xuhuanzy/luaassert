@@ -60,9 +60,9 @@
 ---@field toMatch fun(self: self, expected: string, plain?: boolean) 断言字符串是否与指定模式匹配. 当 `plain` 为 `true` 时, 按字符串查找, 允许仅匹配子串.
 ---@field toThrowError fun(self: self, expected?: any) 函数执行时是否抛出指定错误消息
 ---@field toHaveLength fun(self: self, expected: integer, useN?: boolean) 字符串或表是否具有指定长度. 当 `useN` 为 `true` 时会使用 `n` 字段表示长度, 默认值为 `true`.
----@field toHaveBeenCalled fun(self: self) 断言函数是否被调用过
----@field toHaveBeenCalledTimes fun(self: self, expected: integer) 断言函数被调用的次数
----@field toHaveBeenCalledWith fun(self: self, ...: any) 断言函数是否被调用过, 并使用指定参数调用. 支持部分参数匹配.
+---@field toHaveBeenCalled fun(self: self) 断言函数是否被调用过. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveBeenCalledTimes fun(self: self, expected: integer) 断言函数被调用的次数. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveBeenCalledWith fun(self: self, ...: any) 检查函数是否至少一次被调用, 并带有特定的参数. 需要将一个 spy 函数传递给 `expect`.
 
 
 

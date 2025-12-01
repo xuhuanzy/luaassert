@@ -1,4 +1,4 @@
-local NOOP = require("luaassert.util").NOOP 
+local NOOP = require("luaassert.util").NOOP
 local i18n = require("luaassert.languages.i18n")
 
 local type = type
@@ -84,17 +84,22 @@ Mock.__call = function(self, ...)
         or config.mockOriginal
         or NOOP
     ---@cast implementation function
-    local ok, result = pcall(implementation, ...)
-    state.results[#state.results + 1] = {
+    local ok, returnValue = pcall(implementation, ...)
+    ---@cast returnValue any
+
+    ---@type MockResult<Procedure>
+    local result = {
         type = ok and "return" or "throw",
-        value = result,
+        value = returnValue,
     }
 
+    state.results[#state.results + 1] = result
+
     if not ok then
-        error(result, 0)
+        error(returnValue, 0)
     end
 
-    return result
+    return returnValue
 end
 
 ---返回下一次执行所使用的实现函数

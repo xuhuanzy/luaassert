@@ -23,7 +23,7 @@
 ---@field calls (MockContextCalls<MockParameters<T>>)[] 这是一个包含每次调用所有参数的数组. 数组中的每一项代表该次调用的参数.
 ---@field contexts any[] 这是一个包含每次调用时的上下文数组. 数组中的每一项代表该次调用的上下文.
 ---@field invocationCallOrder number[] 模拟执行的顺序。它返回一个数字数组，这些数字会在所有已定义的模拟之间共享。
----@field results any[] 这是一个包含每次调用结果的数组. 数组中的每一项代表该次调用的结果.
+---@field results MockResult<MockReturnType<T>>[] 这是一个包含每次调用结果的数组. 数组中的每一项代表该次调用的结果.
 ---@field lastCall MockParameters<T>|? 这是最后一次调用的参数. 如果 spy 从未被调用, 则返回 `undefined`.
 
 ---@class MockConfig
@@ -31,6 +31,10 @@
 ---@field mockOriginal? Procedure|table 原始实现函数或表
 ---@field mockName? string 模拟名称
 ---@field onceMockImplementations (Procedure|table)[] 一次模拟实现函数或表数组
+
+---@class MockResult<T>
+---@field type "return" | "throw"
+---@field value T
 
 ---@class MockRestoreConfig
 ---@field resetToMockImplementation? boolean @是否在重置时恢复默认实现.
