@@ -7,9 +7,10 @@ local printWithType = require("luaassert.matchers.matcherUtils").printWithType
 local printExpected = require("luaassert.matchers.matcherUtils").printExpected
 local printReceived = require("luaassert.matchers.matcherUtils").printReceived
 local ensureNoExpected = require("luaassert.matchers.matcherUtils").ensureNoExpected
-local getCustomEqualityTesters = require("luaassert.matchers").getCustomEqualityTesters
 local deepCompare = require("luaassert.util").deepCompare
 local stringify = require("luaassert.matchers.matcherUtils").stringify
+local Assertion = require("luaassert.assertion")
+local flag = require("luaassert.util").flag
 local stringFormat = string.format
 local tableConcat = table.concat
 local mathMin = math.min
@@ -32,35 +33,11 @@ local function printCommon(val)
     return DIM_COLOR(stringify(val))
 end
 
----@param testers Tester[]?
----@param expected any
----@param received any
----@return boolean
-local function equalsWithTesters(testers, expected, received)
-    if testers and #testers > 0 then
-        local context = {}
-        context.equals = function(_, a, b, customTesters)
-            local activeTesters = customTesters and #customTesters > 0 and customTesters or testers
-            return equalsWithTesters(activeTesters, a, b)
-        end
-
-        for _, tester in ipairs(testers) do
-            local result = tester(context, expected, received, testers)
-            if result ~= nil then
-                return result
-            end
-        end
-    end
-
-    return deepCompare(expected, received, true)
-end
-
 ---@param expected any
 ---@param received any
 ---@return boolean
 local function isEqualValue(expected, received)
-    local testers = getCustomEqualityTesters()
-    return equalsWithTesters(testers, expected, received)
+    return deepCompare(expected, received, true)
 end
 
 ---@param expected any[]
@@ -177,47 +154,38 @@ local function formatCallLines(calls)
     return tableConcat(lines, "\n")
 end
 
----@export namespace
----@type MatchersObject
-local spyMatchers = {
+Assertion.addMethod("toHaveBeenCalled", function(self, ...)
+    local actual = self._obj
+    ---@type MatcherHintOptions
+    local options = {
+        isNot = flag(self, "negate"),
+    }
+    local spy = getSpy(actual, "toHaveBeenCalled", "", options)
+    local mockName = spy:getMockName()
+    local calls = (spy.mock and spy.mock.calls) or {}
+    local callCount = #calls
+    local pass = callCount > 0
 
-    toHaveBeenCalled = function(self, expected)
-        local matcherName = "toHaveBeenCalled"
-        ---@type MatcherHintOptions
-        local options = {
-            isNot = self.isNot,
-        }
-        ensureNoExpected(expected, matcherName, options)
-        local spy = getSpy(self.actual, matcherName, "", options)
-        local mockName = spy:getMockName()
-        local calls = (spy.mock and spy.mock.calls) or {}
-        local callCount = #calls
-        local pass = callCount > 0
-
-        local message
-        if pass then
-            message = function()
-                return matcherHint(matcherName, mockName, "", options)
-                    .. "\n\n"
-                    .. "Expected number of calls: " .. printExpected(0) .. "\n"
-                    .. "Received number of calls: " .. printReceived(callCount) .. "\n\n"
-                    .. formatCallLines(calls)
-            end
-        else
-            message = function()
-                return matcherHint(matcherName, mockName, "", options)
-                    .. "\n\n"
-                    .. "Expected number of calls: >= " .. printExpected(1) .. "\n"
-                    .. "Received number of calls:    " .. printReceived(callCount)
-            end
+    local message
+    if pass then
+        message = function()
+            return matcherHint("toHaveBeenCalled", mockName, "", options)
+                .. "\n\n"
+                .. "Expected number of calls: " .. printExpected(0) .. "\n"
+                .. "Received number of calls: " .. printReceived(callCount) .. "\n\n"
+                .. formatCallLines(calls)
         end
+    else
+        message = function()
+            return matcherHint("toHaveBeenCalled", mockName, "", options)
+                .. "\n\n"
+                .. "Expected number of calls: >= " .. printExpected(1) .. "\n"
+                .. "Received number of calls:    " .. printReceived(callCount)
+        end
+    end
 
-        return {
-            pass = pass,
-            message = message,
-        }
-    end,
-}
-
-
-return spyMatchers
+    return {
+        pass = pass,
+        message = message,
+    }
+end)

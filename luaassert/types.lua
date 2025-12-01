@@ -27,10 +27,6 @@
 ---@field actual? any 实际值
 ---@field expected? any 预期值
 
----@alias MatcherFunctionWithContext fun(self: MatcherContext, actual: any, ...: any): ExpectationResult
-
----@alias MatchersObject table<string, MatcherFunctionWithContext>
-
 ---@class Error
 ---@field message string
 
