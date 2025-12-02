@@ -12,32 +12,11 @@
 ---@class TesterContext
 ---@field equals EqualsFunction
 
----@class MatcherUtils
----@field dontThrow fun()
----@field equals EqualsFunction
----@field utils table
-
----@class MatcherContext
----@field actual any 收到的实际值
----@field isNot boolean 是否取反
-
 ---@class ExpectationResult
 ---@field pass boolean 是否通过断言
 ---@field message? fun(): string 断言失败消息
 ---@field actual? any 实际值
 ---@field expected? any 预期值
-
----@class Error
----@field message string
-
----@class MatcherState
----@field isNot boolean 是否取反断言
----@field assertionCalls integer 断言调用次数
----@field expectedAssertionsNumber? integer 预期断言数
----@field isExpectingAssertions boolean 是否正在期待断言
----@field numPassingAsserts integer 通过断言数
----@field suppressedErrors table<integer, Error> 被抑制的错误
-
 
 --- 匹配器接口
 ---@class (partial) Matchers<T>
@@ -72,7 +51,6 @@
 ---@field toHaveNthReturnedWith fun(self: self, nth: integer, ...: any) 检查函数第 n 次返回的值是否与给定实参相同. 需要将一个 spy 函数传递给 `expect`.
 
 
-
 --- 非对称匹配器
 ---@class AsymmetricMatcher
 ---@field asymmetricMatch fun(other: any): boolean
@@ -90,10 +68,3 @@
 ---@field objectContaining fun(sample: {[string]: any}): AsymmetricMatcher
 ---@field stringContaining fun(sample: string): AsymmetricMatcher
 ---@field stringMatching fun(sample: string): AsymmetricMatcher
-
----@class AssertionError
----@field message string 错误消息
----@field ssf? function 起始栈函数
----@field actual any 实际值
----@field expected any 预期值
----@field showDiff boolean 是否显示差异
