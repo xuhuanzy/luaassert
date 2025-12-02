@@ -72,20 +72,88 @@ local function isEqualCall(expected, received)
     return isEqualValue(expected, received)
 end
 
----@param expected any
+---@param expected any[]
 ---@param result table
 ---@return boolean
 local function isEqualReturn(expected, result)
-    return result ~= nil and result.type == "return" and isEqualValue(expected, result.value)
+    if result == nil or result.type ~= "return" then
+        return false
+    end
+
+    expected = expected or {}
+    local expectedValue
+    if #expected <= 1 then
+        expectedValue = expected[1]
+    else
+        expectedValue = expected
+    end
+
+    local receivedValue = result.value
+    if #expected > 1 and type(receivedValue) ~= "table" then
+        receivedValue = { receivedValue }
+    end
+
+    return isEqualValue(expectedValue, receivedValue)
 end
 
----@param results table[]
+---@param expected any[]?
+---@return string
+local function printExpectedReturns(expected)
+    expected = expected or {}
+    if #expected > 1 then
+        return printExpectedArgs(expected)
+    end
+    return printExpected(expected[1])
+end
+
+
+---@param received any[]
+---@param expected any[]?
+---@return string
+local function printReceivedArgs(received, expected)
+    received = received or {}
+    if #received == 0 then
+        return NO_ARGUMENTS
+    end
+
+    local printed = {}
+    for index = 1, #received do
+        local value = received[index]
+        if expected and index <= #expected and isEqualValue(expected[index], value) then
+            printed[index] = printCommon(value)
+        else
+            printed[index] = printReceived(value)
+        end
+    end
+
+    return tableConcat(printed, ", ")
+end
+
+---@param received any
+---@param expected any[]?
+---@return string
+local function printReceivedReturns(received, expected)
+    expected = expected or {}
+    if #expected > 1 then
+        local receivedList = type(received) == "table" and received or { received }
+        return printReceivedArgs(receivedList, expected)
+    end
+
+    if #expected == 1 and isEqualValue(expected[1], received) then
+        return printCommon(received)
+    end
+
+    return printReceived(received)
+end
+
+-- 计算成功返回次数
+---@param results MockResult[]
 ---@return integer
-local function countReturns(results)
-    results = results or {}
+local function countSuccessReturns(results)
+    results = results or {} ---@type MockResult[]
     local total = 0
     for index = 1, #results do
-        if results[index] and results[index].type == "return" then
+        if results[index] and results[index].type ~= "throw" then
             total = total + 1
         end
     end
@@ -154,29 +222,6 @@ local function getSpy(received, matcherName, expectedArgument, options)
         ))
     end
     return received
-end
-
-
----@param received any[]
----@param expected any[]?
----@return string
-local function printReceivedArgs(received, expected)
-    received = received or {}
-    if #received == 0 then
-        return NO_ARGUMENTS
-    end
-
-    local printed = {}
-    for index = 1, #received do
-        local value = received[index]
-        if expected and index <= #expected and isEqualValue(expected[index], value) then
-            printed[index] = printCommon(value)
-        else
-            printed[index] = printReceived(value)
-        end
-    end
-
-    return tableConcat(printed, ", ")
 end
 
 ---@param calls any[][]
@@ -253,7 +298,7 @@ local function printExpectedReceivedCallsPositive(expected, indexedCalls, expand
 end
 
 ---@param result { type: string, value: any }?
----@param expected any
+---@param expected any[]?
 ---@return string
 local function formatResultValue(result, expected)
     if not result then
@@ -266,15 +311,15 @@ local function formatResultValue(result, expected)
         prefix = "threw "
     end
 
-    local printer = printReceived
-    if result.type == "return" and isEqualValue(expected, result.value) then
-        printer = printCommon
+    if result.type ~= "return" then
+        return prefix .. printReceived(result.value)
     end
-    return prefix .. printer(result.value)
+
+    return prefix .. printReceivedReturns(result.value, expected)
 end
 
 ---@param label string
----@param expected any
+---@param expected any[]?
 ---@param indexedResults IndexedResult[]
 ---@param isSingleResult boolean
 ---@return string
@@ -297,6 +342,7 @@ local function printReceivedResults(label, expected, indexedResults, isSingleRes
     return tableConcat(lines, "\n")
 end
 
+-- 检查函数是否至少被调用了一次
 Assertion.addMethod("toHaveBeenCalled", function(self, ...)
     local actual = self._obj
     ---@type MatcherHintOptions
@@ -333,6 +379,7 @@ Assertion.addMethod("toHaveBeenCalled", function(self, ...)
     }
 end)
 
+-- 检查函数是否被调用了特定次数
 ---@param expected integer
 Assertion.addMethod("toHaveBeenCalledTimes", function(self, expected)
     local matcherName = "toHaveBeenCalledTimes"
@@ -369,6 +416,7 @@ Assertion.addMethod("toHaveBeenCalledTimes", function(self, expected)
     }
 end)
 
+-- 检查函数是否至少一次被调用, 并带有特定的参数
 Assertion.addMethod("toHaveBeenCalledWith", function(self, ...)
     local matcherName = "toHaveBeenCalledWith"
     local expectedArgument = "...expected"
@@ -440,6 +488,7 @@ Assertion.addMethod("toHaveBeenCalledWith", function(self, ...)
     }
 end)
 
+-- 检查函数在其最后一次调用时是否被传入了特定的参数
 Assertion.addMethod("toHaveBeenLastCalledWith", function(self, ...)
     local matcherName = "toHaveBeenLastCalledWith"
     local expectedArgument = "...expected"
@@ -454,7 +503,7 @@ Assertion.addMethod("toHaveBeenLastCalledWith", function(self, ...)
     local mockName = spy:getMockName()
     local calls = spy.mock.calls or {}
     local callCount = #calls
-    local lastCall = calls[callCount]
+    local lastCall = spy.mock.lastCall ---@cast lastCall -?
     local pass = callCount > 0 and isEqualCall(expected, lastCall)
 
     local message ---@type fun(): string
@@ -513,6 +562,7 @@ Assertion.addMethod("toHaveBeenLastCalledWith", function(self, ...)
     }
 end)
 
+-- 检查函数是否在特定的次数被调用时带有特定的参数
 Assertion.addMethod("toHaveBeenNthCalledWith", function(self, nth, ...)
     local matcherName = "toHaveBeenNthCalledWith"
     local expectedArgument = "n"
@@ -620,10 +670,12 @@ Assertion.addMethod("toHaveBeenNthCalledWith", function(self, nth, ...)
     }
 end)
 
-Assertion.addMethod("toHaveLastReturnedWith", function(self, expected)
+--- 检查最后一次调用是否返回了预期的值
+Assertion.addMethod("toHaveLastReturnedWith", function(self, ...)
     local matcherName = "toHaveLastReturnedWith"
-    local expectedArgument = "expected"
+    local expectedArgument = "...expected"
     local actual = self._obj
+    local expected = { ... }
     ---@type MatcherHintOptions
     local options = {
         isNot = flag(self, "negate"),
@@ -650,11 +702,11 @@ Assertion.addMethod("toHaveLastReturnedWith", function(self, expected)
             local shouldSkipDetails = resultCount == 1
                 and lastResult ~= nil
                 and lastResult.type == "return"
-                and isEqualValue(expected, lastResult.value)
+                and isEqualReturn(expected, lastResult)
 
             local result = matcherHint(matcherName, mockName, expectedArgument, options)
                 .. "\n\n"
-                .. "Expected: not " .. printExpected(expected) .. "\n"
+                .. "Expected: not " .. printExpectedReturns(expected) .. "\n"
 
             if not shouldSkipDetails then
                 result = result
@@ -662,7 +714,7 @@ Assertion.addMethod("toHaveLastReturnedWith", function(self, expected)
                     .. "\n"
             end
 
-            result = result .. printNumberOfReturns(countReturns(results), #calls)
+            result = result .. printNumberOfReturns(countSuccessReturns(results), #calls)
             return result
         end
     else
@@ -687,10 +739,10 @@ Assertion.addMethod("toHaveLastReturnedWith", function(self, expected)
 
             return matcherHint(matcherName, mockName, expectedArgument, options)
                 .. "\n\n"
-                .. "Expected: " .. printExpected(expected) .. "\n"
+                .. "Expected: " .. printExpectedReturns(expected) .. "\n"
                 .. printReceivedResults("Received: ", expected, indexedResults, resultCount == 1)
                 .. "\n"
-                .. printNumberOfReturns(countReturns(results), #calls)
+                .. printNumberOfReturns(countSuccessReturns(results), #calls)
         end
     end
 
@@ -700,15 +752,17 @@ Assertion.addMethod("toHaveLastReturnedWith", function(self, expected)
     }
 end)
 
-Assertion.addMethod("toHaveNthReturnedWith", function(self, nth, expected)
+--- 检查第 n 次调用是否返回了预期的值
+Assertion.addMethod("toHaveNthReturnedWith", function(self, nth, ...)
     local matcherName = "toHaveNthReturnedWith"
     local expectedArgument = "n"
     local actual = self._obj
+    local expected = { ... }
     ---@type MatcherHintOptions
     local options = {
         isNot = flag(self, "negate"),
         expectedColor = function(arg) return arg end,
-        secondArgument = "expected",
+        secondArgument = "...expected",
     }
 
     ensurePositiveInteger(nth, matcherName, expectedArgument, options)
@@ -738,12 +792,12 @@ Assertion.addMethod("toHaveNthReturnedWith", function(self, nth, expected)
             local shouldSkipDetails = resultCount == 1
                 and targetResult ~= nil
                 and targetResult.type == "return"
-                and isEqualValue(expected, targetResult.value)
+                and isEqualReturn(expected, targetResult)
 
             local result = matcherHint(matcherName, mockName, expectedArgument, options)
                 .. "\n\n"
                 .. "n: " .. tostring(nth) .. "\n"
-                .. "Expected: not " .. printExpected(expected) .. "\n"
+                .. "Expected: not " .. printExpectedReturns(expected) .. "\n"
 
             if not shouldSkipDetails then
                 result = result
@@ -751,7 +805,7 @@ Assertion.addMethod("toHaveNthReturnedWith", function(self, nth, expected)
                     .. "\n"
             end
 
-            result = result .. printNumberOfReturns(countReturns(results), #calls)
+            result = result .. printNumberOfReturns(countSuccessReturns(results), #calls)
             return result
         end
     else
@@ -798,10 +852,10 @@ Assertion.addMethod("toHaveNthReturnedWith", function(self, nth, expected)
             return matcherHint(matcherName, mockName, expectedArgument, options)
                 .. "\n\n"
                 .. "n: " .. tostring(nth) .. "\n"
-                .. "Expected: " .. printExpected(expected) .. "\n"
+                .. "Expected: " .. printExpectedReturns(expected) .. "\n"
                 .. printReceivedResults("Received: ", expected, indexedResults, resultCount == 1)
                 .. "\n"
-                .. printNumberOfReturns(countReturns(results), #calls)
+                .. printNumberOfReturns(countSuccessReturns(results), #calls)
         end
     end
 
@@ -811,7 +865,7 @@ Assertion.addMethod("toHaveNthReturnedWith", function(self, nth, expected)
     }
 end)
 
-
+-- 检查函数是否至少返回了一次值
 Assertion.addMethod("toHaveReturned", function(self, expected)
     local matcherName = "toHaveReturned"
     local expectedArgument = ""
@@ -828,7 +882,7 @@ Assertion.addMethod("toHaveReturned", function(self, expected)
     local mock = spy.mock or {}
     local calls = mock.calls or {}
     local results = mock.results or {}
-    local returnCount = countReturns(results)
+    local returnCount = countSuccessReturns(results)
     local callCount = #calls
     local pass = returnCount > 0
 
@@ -889,7 +943,7 @@ Assertion.addMethod("toHaveReturnedTimes", function(self, expected)
     local mock = spy.mock or {}
     local calls = mock.calls or {}
     local results = mock.results or {}
-    local returnCount = countReturns(results)
+    local returnCount = countSuccessReturns(results)
     local callCount = #calls
     local pass = returnCount == expected
 
@@ -933,11 +987,12 @@ Assertion.addMethod("toHaveReturnedTimes", function(self, expected)
 end)
 
 
--- 检查函数是否至少一次成功返回了带有特定参数的值
-Assertion.addMethod("toHaveReturnedWith", function(self, expected)
+--- 检查函数是否至少一次成功返回了带有特定参数的值
+Assertion.addMethod("toHaveReturnedWith", function(self, ...)
     local matcherName = "toHaveReturnedWith"
-    local expectedArgument = "expected"
+    local expectedArgument = "...expected"
     local actual = self._obj
+    local expected = { ... }
     ---@type MatcherHintOptions
     local options = {
         isNot = flag(self, "negate"),
@@ -969,11 +1024,11 @@ Assertion.addMethod("toHaveReturnedWith", function(self, expected)
             local shouldSkipDetails = resultCount == 1
                 and results[1] ~= nil
                 and results[1].type == "return"
-                and isEqualValue(expected, results[1].value)
+                and isEqualReturn(expected, results[1])
 
             local result = matcherHint(matcherName, mockName, expectedArgument, options)
                 .. "\n\n"
-                .. "Expected: not " .. printExpected(expected) .. "\n"
+                .. "Expected: not " .. printExpectedReturns(expected) .. "\n"
 
             if not shouldSkipDetails then
                 result = result
@@ -981,7 +1036,7 @@ Assertion.addMethod("toHaveReturnedWith", function(self, expected)
                     .. "\n"
             end
 
-            result = result .. printNumberOfReturns(countReturns(results), callCount)
+            result = result .. printNumberOfReturns(countSuccessReturns(results), callCount)
             return result
         end
     else
@@ -994,10 +1049,10 @@ Assertion.addMethod("toHaveReturnedWith", function(self, expected)
 
             return matcherHint(matcherName, mockName, expectedArgument, options)
                 .. "\n\n"
-                .. "Expected: " .. printExpected(expected) .. "\n"
+                .. "Expected: " .. printExpectedReturns(expected) .. "\n"
                 .. printReceivedResults("Received: ", expected, limitedResults, resultCount == 1)
                 .. "\n"
-                .. printNumberOfReturns(countReturns(results), callCount)
+                .. printNumberOfReturns(countSuccessReturns(results), callCount)
         end
     end
 

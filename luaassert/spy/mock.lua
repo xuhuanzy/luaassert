@@ -5,6 +5,7 @@ local type = type
 local select = select
 local tableRemove = table.remove
 local stringFormat = string.format
+local tableUnpack = table.unpack
 ---@namespace Luaassert
 
 -- 调用顺序计数器
@@ -84,15 +85,20 @@ Mock.__call = function(self, ...)
         or config.mockOriginal
         or NOOP
     ---@cast implementation function
-    local ok, returnValue = pcall(implementation, ...)
-    ---@cast returnValue any
 
+    ---@type {[1]: boolean, [2]: any}
+    local resultObj = { pcall(implementation, ...) }
+    local ok = resultObj[1] and true or false
+    ---@type any
+    local returnValue = { tableUnpack(resultObj, 2) }
+    if #returnValue == 1 then
+        returnValue = returnValue[1]
+    end
     ---@type MockResult<Procedure>
     local result = {
         type = ok and "return" or "throw",
         value = returnValue,
     }
-
     state.results[#state.results + 1] = result
 
     if not ok then

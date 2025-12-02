@@ -63,6 +63,13 @@
 ---@field toHaveBeenCalled fun(self: self) 断言函数是否被调用过. 需要将一个 spy 函数传递给 `expect`.
 ---@field toHaveBeenCalledTimes fun(self: self, expected: integer) 断言函数被调用的次数. 需要将一个 spy 函数传递给 `expect`.
 ---@field toHaveBeenCalledWith fun(self: self, ...: any) 检查函数是否至少一次被调用, 并带有特定的参数. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveBeenLastCalledWith fun(self: self, ...: any) 检查函数最后一次调用时是否传入了指定参数. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveBeenNthCalledWith fun(self: self, nth: integer, ...: any) 检查函数第 n 次调用时是否传入了指定参数. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveReturned fun(self: self) 断言函数至少成功返回过一次. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveReturnedTimes fun(self: self, expected: integer) 断言函数成功返回的次数是否为预期值. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveReturnedWith fun(self: self, ...: any) 断言函数至少有一次返回值与给定实参相同. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveLastReturnedWith fun(self: self, ...: any) 检查函数最后一次返回的值是否与给定实参相同. 需要将一个 spy 函数传递给 `expect`.
+---@field toHaveNthReturnedWith fun(self: self, nth: integer, ...: any) 检查函数第 n 次返回的值是否与给定实参相同. 需要将一个 spy 函数传递给 `expect`.
 
 
 
