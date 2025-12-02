@@ -16,6 +16,7 @@ local stringFormat = string.format
 local tableConcat = table.concat
 local mathMin = math.min
 local DIM_COLOR = matcherUtils.DIM_COLOR
+-- spy 匹配器实现参考 Jest, 并适配 luaassert 的 Mock 类型
 
 ---@namespace Luaassert
 
@@ -100,6 +101,25 @@ local function printNumberOfReturns(returnCount, callCount)
         message = message .. "\nNumber of calls:   " .. printReceived(callCount)
     end
     return message
+end
+
+---@param results MockResult<any>[]
+---@return string
+local function formatReturnLines(results)
+    results = results or {}
+    local lines = {}
+    local printed = 0
+    for index = 1, #results do
+        local result = results[index]
+        if result and result.type == "return" then
+            lines[#lines + 1] = stringFormat("%d: %s", index, printReceived(result.value))
+            printed = printed + 1
+            if printed >= PRINT_LIMIT then
+                break
+            end
+        end
+    end
+    return tableConcat(lines, "\n")
 end
 
 ---@param value any
@@ -782,6 +802,202 @@ Assertion.addMethod("toHaveNthReturnedWith", function(self, nth, expected)
                 .. printReceivedResults("Received: ", expected, indexedResults, resultCount == 1)
                 .. "\n"
                 .. printNumberOfReturns(countReturns(results), #calls)
+        end
+    end
+
+    return {
+        pass = pass,
+        message = message,
+    }
+end)
+
+
+Assertion.addMethod("toHaveReturned", function(self, expected)
+    local matcherName = "toHaveReturned"
+    local expectedArgument = ""
+    local actual = self._obj
+    ---@type MatcherHintOptions
+    local options = {
+        isNot = flag(self, "negate"),
+    }
+
+    ensureNoExpected(expected, matcherName, options)
+
+    local spy = getSpy(actual, matcherName, expectedArgument, options)
+    local mockName = spy:getMockName()
+    local mock = spy.mock or {}
+    local calls = mock.calls or {}
+    local results = mock.results or {}
+    local returnCount = countReturns(results)
+    local callCount = #calls
+    local pass = returnCount > 0
+
+    local message ---@type fun(): string
+    if pass then
+        message = function()
+            local result = matcherHint(matcherName, mockName, expectedArgument, options)
+                .. "\n\n"
+                .. "Expected number of returns: " .. printExpected(0) .. "\n"
+                .. "Received number of returns: " .. printReceived(returnCount)
+
+            local returnLines = formatReturnLines(results)
+            if returnLines ~= "" then
+                result = result .. "\n\n" .. returnLines
+            end
+
+            if callCount ~= returnCount then
+                result = result .. "\n\nReceived number of calls:   " .. printReceived(callCount)
+            end
+
+            return result
+        end
+    else
+        message = function()
+            local result = matcherHint(matcherName, mockName, expectedArgument, options)
+                .. "\n\n"
+                .. "Expected number of returns: >= " .. printExpected(1) .. "\n"
+                .. "Received number of returns:    " .. printReceived(returnCount)
+
+            if callCount ~= returnCount then
+                result = result .. "\nReceived number of calls:      " .. printReceived(callCount)
+            end
+
+            return result
+        end
+    end
+
+    return {
+        pass = pass,
+        message = message,
+    }
+end)
+
+--- 检查函数是否在确切的次数内成功返回了值
+Assertion.addMethod("toHaveReturnedTimes", function(self, expected)
+    local matcherName = "toHaveReturnedTimes"
+    local expectedArgument = "expected"
+    local actual = self._obj
+    ---@type MatcherHintOptions
+    local options = {
+        isNot = flag(self, "negate"),
+    }
+
+    ensureExpectedIsNonNegativeInteger(expected, matcherName, options)
+
+    local spy = getSpy(actual, matcherName, expectedArgument, options)
+    local mockName = spy:getMockName()
+    local mock = spy.mock or {}
+    local calls = mock.calls or {}
+    local results = mock.results or {}
+    local returnCount = countReturns(results)
+    local callCount = #calls
+    local pass = returnCount == expected
+
+    local message ---@type fun(): string
+    if pass then
+        message = function()
+            local result = matcherHint(matcherName, mockName, expectedArgument, options)
+                .. "\n\n"
+                .. "Expected number of returns: not " .. printExpected(expected)
+
+            if callCount ~= returnCount then
+                result = result .. "\n\nReceived number of calls:   " .. printReceived(callCount)
+            end
+
+            return result
+        end
+    else
+        message = function()
+            local result = matcherHint(matcherName, mockName, expectedArgument, options)
+                .. "\n\n"
+                .. "Expected number of returns: " .. printExpected(expected) .. "\n"
+                .. "Received number of returns: " .. printReceived(returnCount)
+
+            local returnLines = formatReturnLines(results)
+            if returnLines ~= "" then
+                result = result .. "\n\n" .. returnLines
+            end
+
+            if callCount ~= returnCount then
+                result = result .. "\n\nReceived number of calls:   " .. printReceived(callCount)
+            end
+
+            return result
+        end
+    end
+
+    return {
+        pass = pass,
+        message = message,
+    }
+end)
+
+
+-- 检查函数是否至少一次成功返回了带有特定参数的值
+Assertion.addMethod("toHaveReturnedWith", function(self, expected)
+    local matcherName = "toHaveReturnedWith"
+    local expectedArgument = "expected"
+    local actual = self._obj
+    ---@type MatcherHintOptions
+    local options = {
+        isNot = flag(self, "negate"),
+    }
+
+    local spy = getSpy(actual, matcherName, expectedArgument, options)
+    local mockName = spy:getMockName()
+    local mock = spy.mock or {}
+    local calls = mock.calls or {}
+    local results = mock.results or {}
+    local resultCount = #results
+    local callCount = #calls
+    local pass = false
+    local matchedResults = {}
+
+    for index = 1, resultCount do
+        local result = results[index]
+        if isEqualReturn(expected, result) then
+            pass = true
+            if #matchedResults < PRINT_LIMIT then
+                matchedResults[#matchedResults + 1] = { index, result }
+            end
+        end
+    end
+
+    local message ---@type fun(): string
+    if pass then
+        message = function()
+            local shouldSkipDetails = resultCount == 1
+                and results[1] ~= nil
+                and results[1].type == "return"
+                and isEqualValue(expected, results[1].value)
+
+            local result = matcherHint(matcherName, mockName, expectedArgument, options)
+                .. "\n\n"
+                .. "Expected: not " .. printExpected(expected) .. "\n"
+
+            if not shouldSkipDetails then
+                result = result
+                    .. printReceivedResults("Received:     ", expected, matchedResults, resultCount == 1)
+                    .. "\n"
+            end
+
+            result = result .. printNumberOfReturns(countReturns(results), callCount)
+            return result
+        end
+    else
+        message = function()
+            local limitedResults = {}
+            local limit = mathMin(resultCount, PRINT_LIMIT)
+            for index = 1, limit do
+                limitedResults[#limitedResults + 1] = { index, results[index] }
+            end
+
+            return matcherHint(matcherName, mockName, expectedArgument, options)
+                .. "\n\n"
+                .. "Expected: " .. printExpected(expected) .. "\n"
+                .. printReceivedResults("Received: ", expected, limitedResults, resultCount == 1)
+                .. "\n"
+                .. printNumberOfReturns(countReturns(results), callCount)
         end
     end
 
