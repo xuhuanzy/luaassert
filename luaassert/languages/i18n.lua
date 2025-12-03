@@ -1,6 +1,3 @@
----@diagnostic disable-next-line: access-invisible
-local unpack = table.unpack or unpack
-
 ---@namespace Luaassert
 
 local registry = {}
@@ -47,10 +44,6 @@ function M:setFallbackLocale(locale)
     if not registry[fallbackLocale] then
         registry[fallbackLocale] = {}
     end
-end
-
-function M:translate()
-
 end
 
 M:setLocale("en")
