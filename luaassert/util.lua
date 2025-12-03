@@ -43,7 +43,7 @@ local function deepCopy(source, deepMate, mark)
     if type(source) ~= "table" then return source end
     local copy = {}
 
-    local mark = mark or {}
+    mark = mark or {}
     if mark[source] then return mark[source] end
     mark[source] = copy
 
@@ -68,10 +68,8 @@ util.deepCopy = deepCopy
 ---@param pairCache table? 已比较的表对缓存
 ---@return boolean @ 是否相等
 local function deepCompare(t1, t2, ignoreMeta, pairCache)
-    local ty1 = type(t1)
-    local ty2 = type(t2)
     -- 非表格类型可以直接进行比较
-    if ty1 ~= 'table' or ty2 ~= 'table' then
+    if type(t1) ~= 'table' or type(t2) ~= 'table' then
         return t1 == t2
     end
     -- 如果两个表的引用相等, 则直接返回 true
