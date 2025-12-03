@@ -14,6 +14,40 @@ do
 end
 -- #endregion toHaveBeenCalled
 
+-- #region spyOn 支持
+do
+    local service = {
+        value = 0,
+        inc = function(self, delta)
+            self.value = self.value + delta
+            return self.value
+        end,
+    }
+
+    local spy = mock.spyOn(service, "inc")
+
+    service:inc(2)
+    service:inc(3)
+
+    expect(spy):toHaveBeenCalledTimes(2)
+    expect(spy):toHaveBeenCalledWith(service, 2)
+    expect(spy):toHaveBeenLastCalledWith(service, 3)
+    expect(spy):toHaveBeenNthCalledWith(2, service, 3)
+    expect(spy).not_:toHaveBeenCalledWith(service, 99)
+
+    spy:mockReturnValue(10)
+    local mockedResult = service:inc(1)
+
+    expect(mockedResult):toBe(10)
+    expect(spy):toHaveReturnedWith(10)
+    expect(spy):toHaveReturnedTimes(3)
+    expect(spy):toHaveLastReturnedWith(10)
+
+    spy:mockRestore()
+    expect(service:inc(1)):toBe(6)
+end
+-- #endregion spyOn 支持
+
 -- #region toHaveBeenCalledWith系列
 do
     local spy = mock.fn()
