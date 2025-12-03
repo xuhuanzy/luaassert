@@ -4,8 +4,6 @@ local matcherHint = matcherUtils.matcherHint
 local deepCompare = require("luaassert.util").deepCompare
 local printExpected = matcherUtils.printExpected
 local printReceived = matcherUtils.printReceived
-local ensureNoExpected = matcherUtils.ensureNoExpected
-local ensureNumbers = matcherUtils.ensureNumbers
 local ensureExpectedIsNonNegativeInteger = matcherUtils.ensureExpectedIsNonNegativeInteger
 local hasToString = require("luaassert.util").hasToString
 local printDiffOrStringify = require("luaassert.utils.diff").printDiffOrStringify
@@ -152,14 +150,13 @@ end)
 
 -- 检查实际值的类型是否与预期值相等
 -- 检查实际值是否为整数
-Assertion.addMethod("toBeInteger", function(self, expected)
+Assertion.addMethod("toBeInteger", function(self)
     local actual = self._obj
     local matcherName = "toBeInteger"
     ---@type MatcherHintOptions
     local options = {
         isNot = flag(self, "negate"),
     }
-    ensureNoExpected(expected, matcherName, options)
     local pass = type(actual) == "number" and math.type(actual) == "integer"
     return {
         pass = pass,
@@ -188,8 +185,6 @@ Assertion.addMethod("toBeCloseTo", function(self, expected, precision)
             return arg
         end
     end
-
-    ensureNumbers(actual, expected, matcherName, options)
 
     local decimals ---@type integer
     if precision == nil then
@@ -278,15 +273,13 @@ Assertion.addMethod("toEqual", function(self, expected)
 end)
 
 -- 检查实际值是否为假值
-Assertion.addMethod("toBeFalsy", function(self, expected)
+Assertion.addMethod("toBeFalsy", function(self)
     local actual = self._obj
     local matcherName = "toBeFalsy"
     ---@type MatcherHintOptions
     local options = {
         isNot = flag(self, "negate"),
     }
-
-    ensureNoExpected(expected, matcherName, options)
 
     local pass = not actual
     return {
@@ -301,15 +294,13 @@ Assertion.addMethod("toBeFalsy", function(self, expected)
 end)
 
 -- 检查实际值是否为真值
-Assertion.addMethod("toBeTruthy", function(self, expected)
+Assertion.addMethod("toBeTruthy", function(self)
     local actual = self._obj
     local matcherName = "toBeTruthy"
     ---@type MatcherHintOptions
     local options = {
         isNot = flag(self, "negate"),
     }
-
-    ensureNoExpected(expected, matcherName, options)
 
     local pass = not not actual
     return {
@@ -850,8 +841,6 @@ Assertion.addMethod("toBeGreaterThan", function(self, expected)
         isNot = flag(self, "negate"),
     }
 
-    ensureNumbers(actual, expected, matcherName, options)
-
     local pass = actual > expected
     local message = function()
         local expectedLine = stringFormat("Expected:%s > %s", options.isNot and " not" or "",
@@ -879,8 +868,6 @@ Assertion.addMethod("toBeGreaterThanOrEqual", function(self, expected)
     local options = {
         isNot = flag(self, "negate"),
     }
-
-    ensureNumbers(actual, expected, matcherName, options)
 
     local pass = actual >= expected
     local message = function()
@@ -910,8 +897,6 @@ Assertion.addMethod("toBeLessThan", function(self, expected)
         isNot = flag(self, "negate"),
     }
 
-    ensureNumbers(actual, expected, matcherName, options)
-
     local pass = actual < expected
     local message = function()
         local expectedLine = stringFormat("Expected:%s < %s", options.isNot and " not" or "",
@@ -940,8 +925,6 @@ Assertion.addMethod("toBeLessThanOrEqual", function(self, expected)
     local options = {
         isNot = flag(self, "negate"),
     }
-
-    ensureNumbers(actual, expected, matcherName, options)
 
     local pass = actual <= expected
     local message = function()

@@ -6,7 +6,6 @@ local matcherHint = require("luaassert.matchers.matcherUtils").matcherHint
 local printWithType = require("luaassert.matchers.matcherUtils").printWithType
 local printExpected = require("luaassert.matchers.matcherUtils").printExpected
 local printReceived = require("luaassert.matchers.matcherUtils").printReceived
-local ensureNoExpected = require("luaassert.matchers.matcherUtils").ensureNoExpected
 local ensureExpectedIsNonNegativeInteger = require("luaassert.matchers.matcherUtils").ensureExpectedIsNonNegativeInteger
 local deepCompare = require("luaassert.util").deepCompare
 local stringify = require("luaassert.matchers.matcherUtils").stringify
@@ -874,8 +873,6 @@ Assertion.addMethod("toHaveReturned", function(self, expected)
     local options = {
         isNot = flag(self, "negate"),
     }
-
-    ensureNoExpected(expected, matcherName, options)
 
     local spy = getSpy(actual, matcherName, expectedArgument, options)
     local mockName = spy:getMockName()

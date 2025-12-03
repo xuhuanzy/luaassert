@@ -3,8 +3,6 @@ local stringFormat = string.format
 local prettyFormat = require("luaassert.utils.prettyFormat").format
 local i18n = require("luaassert.languages.i18n")
 local type = type
-local tableConcat = table.concat
-local tableInsert = table.insert
 ---@namespace Luaassert
 
 ---@export namespace
@@ -140,29 +138,6 @@ export.printExpected = function(value)
     return EXPECTED_COLOR(replaceTrailingSpaces(stringify(value)))
 end
 
---- 确保实际值与预期值都是数字
----@param received any
----@param expected any
----@param matcherName string
----@param options MatcherHintOptions?
-function export.ensureNumbers(received, expected, matcherName, options)
-    if type(received) ~= "number" then
-        error(export.matcherErrorMessage(
-            export.matcherHint(matcherName, nil, nil, options),
-            i18n("接收值(received)必须为number"),
-            export.printWithType('Received', received, export.printReceived)
-        ))
-    end
-
-    if type(expected) ~= "number" then
-        error(export.matcherErrorMessage(
-            export.matcherHint(matcherName, nil, nil, options),
-            i18n("预期值(expected)必须为number"),
-            export.printWithType('Expected', expected, export.printExpected)
-        ))
-    end
-end
-
 --- 确保预期长度为非负整数
 ---@param expected any
 ---@param matcherName string
@@ -172,21 +147,6 @@ function export.ensureExpectedIsNonNegativeInteger(expected, matcherName, option
         error(export.matcherErrorMessage(
             export.matcherHint(matcherName, nil, 'expected', options),
             i18n("预期值(expected)必须为非负整数"),
-            export.printWithType('Expected', expected, export.printExpected)
-        ))
-    end
-end
-
---- 确保匹配器未接收预期值
----@param expected any? 传入的预期值
----@param matcherName string 匹配器名称
----@param options MatcherHintOptions? 匹配器选项
-function export.ensureNoExpected(expected, matcherName, options)
-    if expected ~= nil then
-        local matcherString = (options and '' or '[.not]') .. matcherName
-        error(export.matcherErrorMessage(
-            export.matcherHint(matcherString, nil, '', options),
-            i18n('该匹配器不能接收预期(expected)参数'),
             export.printWithType('Expected', expected, export.printExpected)
         ))
     end
