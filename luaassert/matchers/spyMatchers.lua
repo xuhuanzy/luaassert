@@ -242,7 +242,7 @@ end
 ---@param indent string?
 ---@return string
 local function formatIndexedCallLines(indexedCalls, expected, indent)
-    indexedCalls = indexedCalls or {}
+    indexedCalls = indexedCalls or {} ---@type IndexedCall[]
     indent = indent or ""
     local lines = {}
     for index = 1, #indexedCalls do

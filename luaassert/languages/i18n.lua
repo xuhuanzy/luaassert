@@ -1,5 +1,6 @@
 ---@namespace Luaassert
 
+---@type table<string, table<string, string>>
 local registry = {}
 ---@type string, string
 local currentLocale, fallbackLocale
