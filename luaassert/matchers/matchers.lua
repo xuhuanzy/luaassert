@@ -18,10 +18,6 @@ local tableConcat = table.concat
 
 ---@namespace Luaassert
 
-local EXPECTED_LABEL = 'Expected'; ---@readonly
-local RECEIVED_LABEL = 'Received'; ---@readonly
-
-
 --- 检查 actual 是否包含 expected 的子集
 ---@param actual table
 ---@param expected table

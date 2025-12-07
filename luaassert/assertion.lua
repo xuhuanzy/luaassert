@@ -44,6 +44,7 @@ function Assertion.addMethod(name, fn)
         local isNot = flag(self, "negate")
         if (result.pass and isNot) or (not result.pass and not isNot) then
             local message = result.message and result.message() or RECEIVED_COLOR(i18n("没有为此匹配器指定消息。"))
+            message = "\n" .. message
             error(message, errorLevel())
         end
     end

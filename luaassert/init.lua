@@ -26,6 +26,7 @@ local function use(fn)
     return exports
 end
 
+---@export global
 local Api = {
     expect = expect,
     mock = mock,
